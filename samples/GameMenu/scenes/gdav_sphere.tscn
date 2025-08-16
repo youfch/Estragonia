@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://bbbyyy7v6v5m0"]
 
 [ext_resource type="PackedScene" uid="uid://kuaj6go14cuq" path="res://models/gdav.blend" id="1_asbc4"]
-[ext_resource type="Script" path="res://scripts/GdAvSphere.cs" id="2_2lpsc"]
+[ext_resource type="Script" uid="uid://bji53o3b3w1xp" path="res://scripts/GdAvSphere.cs" id="2_2lpsc"]
 
 [node name="GdAvSphereRoot" instance=ExtResource("1_asbc4")]
 
