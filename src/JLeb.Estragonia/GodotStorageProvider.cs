@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -140,5 +140,5 @@ internal sealed class GodotStorageProvider : IStorageProvider {
 			Transient = true,
 			UseNativeDialog = true
 		};
-
+	public Task<SaveFilePickerResult> SaveFilePickerWithResultAsync(FilePickerSaveOptions options) => throw new NotImplementedException();
 }

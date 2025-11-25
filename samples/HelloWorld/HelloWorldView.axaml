@@ -60,6 +60,7 @@
 			TextWrapping="Wrap"
 			Width="200"
 			Height="160"
+			AcceptsReturn="True"
 			Grid.Row="1">
 			<TextBox.Text>
 				Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.

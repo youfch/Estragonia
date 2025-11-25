@@ -73,6 +73,7 @@ internal sealed class BclStorageFolder : IStorageBookmarkFolder {
 
 		return Task.FromResult<IStorageFile?>(new BclStorageFile(file));
 	}
+
 	public Task<string?> SaveBookmarkAsync()
 		=> Task.FromResult<string?>(DirectoryInfo.FullName);
 
