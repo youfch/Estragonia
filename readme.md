@@ -6,7 +6,17 @@
 
 Estragonia is a bridge allowing the use of the powerful [Avalonia UI](https://github.com/AvaloniaUI/Avalonia) framework in the no less powerful [Godot](https://github.com/godotengine/godot) game engine!
 
-It's GPU accelerated using Vulkan, which is the main renderer used in Godot 4.
+It's GPU accelerated using the native graphics API for your platform.
+
+## Platform Support
+
+| Platform | Graphics Backend | Rendering |
+|----------|-----------------|-----------|
+| Windows  | Vulkan          | GPU accelerated |
+| Linux    | Vulkan          | GPU accelerated |
+| macOS    | Metal           | GPU accelerated (zero-copy) |
+
+The appropriate backend is automatically selected at runtime. No configuration required.
 
 ## Quick Start
 
