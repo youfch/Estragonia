@@ -6,8 +6,8 @@ using static JLeb.Estragonia.VkInterop;
 
 namespace JLeb.Estragonia;
 
-/// <summary>Encapsulates a Skia surface along with the Godot texture it comes from.</summary>
-internal sealed class GodotSkiaSurface : ISkiaSurface {
+/// <summary>Encapsulates a Skia surface along with the Godot texture it comes from (Vulkan backend).</summary>
+internal sealed class GodotSkiaSurface : IGodotSkiaSurface {
 
 	public SKSurface SkSurface { get; }
 

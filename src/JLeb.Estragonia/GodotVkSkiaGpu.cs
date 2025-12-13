@@ -15,7 +15,7 @@ using Environment = System.Environment;
 namespace JLeb.Estragonia;
 
 /// <summary>Bridges the Godot Vulkan renderer with a Skia context used by Avalonia.</summary>
-internal sealed class GodotVkSkiaGpu : ISkiaGpu {
+internal sealed class GodotVkSkiaGpu : IGodotSkiaGpu {
 
 	private readonly RenderingDevice _renderingDevice;
 	private readonly GRContext _grContext;
@@ -82,7 +82,7 @@ internal sealed class GodotVkSkiaGpu : ISkiaGpu {
 		};
 
 		if (GRContext.CreateVulkan(vkContext) is not { } grContext)
-			throw new InvalidOperationException("Couldn't create Vulkan context");
+			throw new InvalidOperationException("Couldn't create Vulkan context. Note: SkiaSharp does not include Vulkan support on macOS.");
 
 		_grContext = grContext;
 		_queueFamilyIndex = vkQueueFamilyIndex;
@@ -96,18 +96,33 @@ internal sealed class GodotVkSkiaGpu : ISkiaGpu {
 			return TryLoadByName("vulkan-1.dll", out handle);
 
 		if (OperatingSystem.IsMacOS() || OperatingSystem.IsIOS()) {
+			// On macOS, Godot bundles MoltenVK statically in the executable.
+			// Try loading from the main program first to avoid conflicts with external MoltenVK.
+			if (TryLoadFromMainProgram(out handle))
+				return true;
+
 			return TryLoadByName("libvulkan.dylib", out handle)
 				|| TryLoadByName("libvulkan.1.dylib", out handle)
 				|| TryLoadByName("libMoltenVK.dylib", out handle)
 				|| TryLoadByPath("vulkan.framework/vulkan", out handle)
 				|| TryLoadByPath("MoltenVK.framework/MoltenVK", out handle)
 				|| (Environment.GetEnvironmentVariable("DYLD_FALLBACK_LIBRARY_PATH") is null
-					&& TryLoadByPath("/usr/local/lib/libvulkan.dylib", out handle)
+					&& (TryLoadByPath("/opt/homebrew/lib/libvulkan.dylib", out handle) // Apple Silicon
+						|| TryLoadByPath("/opt/homebrew/lib/libMoltenVK.dylib", out handle) // Apple Silicon
+						|| TryLoadByPath("/usr/local/lib/libvulkan.dylib", out handle) // Intel
+						|| TryLoadByPath("/usr/local/lib/libMoltenVK.dylib", out handle)) // Intel
 				);
 		}
 
 		return TryLoadByName("libvulkan.so.1", out handle)
 			|| TryLoadByName("libvulkan.so", out handle);
+
+		static bool TryLoadFromMainProgram(out IntPtr handle) {
+			handle = NativeLibrary.GetMainProgramHandle();
+			// Verify the main program exports Vulkan symbols
+			return handle != IntPtr.Zero
+				&& NativeLibrary.TryGetExport(handle, "vkGetInstanceProcAddr", out _);
+		}
 
 		static bool TryLoadByName(string libraryName, out IntPtr handle)
 			=> NativeLibrary.TryLoad(libraryName, typeof(GodotVkSkiaGpu).Assembly, null, out handle);
@@ -127,7 +142,7 @@ internal sealed class GodotVkSkiaGpu : ISkiaGpu {
 			? new GodotSkiaRenderTarget(surface, _grContext, _barrierHelper)
 			: null;
 
-	public GodotSkiaSurface CreateSurface(PixelSize size, double renderScaling) {
+	public IGodotSkiaSurface CreateSurface(PixelSize size, double renderScaling) {
 		size = new PixelSize(Math.Max(size.Width, 1), Math.Max(size.Height, 1));
 
 		var gdRdTextureFormat = new RDTextureFormat {

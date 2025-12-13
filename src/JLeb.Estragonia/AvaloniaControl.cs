@@ -122,7 +122,7 @@ public class AvaloniaControl : GdControl {
 
 		var locator = AvaloniaLocator.Current;
 
-		if (locator.GetService<IPlatformGraphics>() is not GodotVkPlatformGraphics graphics) {
+		if (locator.GetService<IPlatformGraphics>() is not IGodotPlatformGraphics graphics) {
 			GD.PrintErr("No Godot platform graphics found, did you forget to register your Avalonia app with UseGodot()?");
 			return;
 		}
