@@ -107,26 +107,26 @@ internal sealed class GodotStorageProvider : IStorageProvider {
 				dialog.AddFilter(String.Join(',', fileType.Patterns ?? Array.Empty<string>()), fileType.Name);
 		}
 
+		var taskCompletionSource = new TaskCompletionSource<IReadOnlyList<IStorageFile>>();
+
 		if (fileMode == FileDialog.FileModeEnum.OpenFiles)
 			dialog.FilesSelected += OnFilesSelected;
 		else
 			dialog.FileSelected += OnFileSelected;
 
-		var storageFiles = Array.Empty<BclStorageFile>();
-
 		void OnFilesSelected(string[] paths) {
 			dialog.FilesSelected -= OnFilesSelected;
-			storageFiles = paths.Select(path => new BclStorageFile(new FileInfo(path))).ToArray();
+			taskCompletionSource.SetResult(paths.Select(path => new BclStorageFile(new FileInfo(path))).ToArray());
 		}
 
 		void OnFileSelected(string path) {
 			dialog.FileSelected -= OnFileSelected;
-			storageFiles = new[] { new BclStorageFile(new FileInfo(path)) };
+			taskCompletionSource.SetResult(new[] { new BclStorageFile(new FileInfo(path)) });
 		}
 
 		dialog.Show();
 
-		return Task.FromResult<IReadOnlyList<IStorageFile>>(storageFiles);
+		return taskCompletionSource.Task;
 	}
 
 	private static FileDialog CreateDialog(PickerOptions options, FileDialog.FileModeEnum fileMode)
