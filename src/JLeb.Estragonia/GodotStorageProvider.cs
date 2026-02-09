@@ -114,6 +114,8 @@ internal sealed class GodotStorageProvider : IStorageProvider {
 		else
 			dialog.FileSelected += OnFileSelected;
 
+		dialog.Canceled += OnCancelled;
+
 		void OnFilesSelected(string[] paths) {
 			dialog.FilesSelected -= OnFilesSelected;
 			taskCompletionSource.SetResult(paths.Select(path => new BclStorageFile(new FileInfo(path))).ToArray());
@@ -122,6 +124,11 @@ internal sealed class GodotStorageProvider : IStorageProvider {
 		void OnFileSelected(string path) {
 			dialog.FileSelected -= OnFileSelected;
 			taskCompletionSource.SetResult(new[] { new BclStorageFile(new FileInfo(path)) });
+		}
+
+		void OnCancelled() {
+			dialog.Canceled -= OnCancelled;
+			taskCompletionSource.SetResult(Array.Empty<BclStorageFile>());
 		}
 
 		dialog.Show();
