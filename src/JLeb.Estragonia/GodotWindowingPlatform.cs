@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using Avalonia.Input.Platform;
 using Avalonia.Platform;
 using AvCompositor = Avalonia.Rendering.Composition.Compositor;
