@@ -33,23 +33,29 @@ internal static class GodotPlatform {
 		var renderTimer = new ManualRenderTimer();
 
 		var clipboardImpl = CreateHeadlessClipboardStub();
+		var clipboard = new GodotClipboard(clipboardImpl);
+
+		s_renderTimer = renderTimer;
 
 		AvaloniaLocator.CurrentMutable
-			.Bind<IClipboard>().ToConstant(new GodotClipboard(clipboardImpl))
+			.Bind<IClipboard>().ToConstant(clipboard)
 			.Bind<ICursorFactory>().ToConstant(new GodotCursorFactory())
 			.Bind<IDispatcherImpl>().ToConstant(new GodotDispatcherImpl(Thread.CurrentThread))
 			.Bind<IKeyboardDevice>().ToConstant(GodotDevices.Keyboard)
 			.Bind<IPlatformGraphics>().ToConstant(platformGraphics)
 			.Bind<IPlatformIconLoader>().ToConstant(new StubPlatformIconLoader())
 			.Bind<IPlatformSettings>().ToConstant(new GodotPlatformSettings())
-			.Bind<IRenderTimer>().ToConstant(renderTimer)
-			.Bind<IWindowingPlatform>().ToConstant(new GodotWindowingPlatform())
+			.Bind<IRenderTimer>().ToConstant(renderTimer);
+
+		s_compositor = new AvCompositor(platformGraphics);
+
+		var windowingPlatform = new GodotWindowingPlatform(platformGraphics, clipboard, s_compositor);
+
+		AvaloniaLocator.CurrentMutable
+			.Bind<IWindowingPlatform>().ToConstant(windowingPlatform)
 			.Bind<IStorageProviderFactory>().ToConstant(new GodotStorageProviderFactory())
 			.Bind<PlatformHotkeyConfiguration>().ToConstant(CreatePlatformHotKeyConfiguration())
 			.Bind<ManagedFileDialogOptions>().ToConstant(new ManagedFileDialogOptions { AllowDirectorySelection = true });
-
-		s_renderTimer = renderTimer;
-		s_compositor = new AvCompositor(platformGraphics);
 	}
 
 	private static PlatformHotkeyConfiguration CreatePlatformHotKeyConfiguration()

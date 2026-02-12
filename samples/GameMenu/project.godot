@@ -23,6 +23,10 @@ AvaloniaLoader="res://UI/AvaloniaLoader.cs"
 
 project/assembly_name="GameMenu"
 
+[filesystem]
+
+import/blender/enabled=false
+
 [input]
 
 ui_accept={
