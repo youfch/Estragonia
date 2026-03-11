@@ -34,19 +34,29 @@ internal sealed class GodotStorageProvider : IStorageProvider {
 	}
 
 	public Task<IReadOnlyList<IStorageFolder>> OpenFolderPickerAsync(FolderPickerOpenOptions options) {
-		var folders = Array.Empty<IStorageFolder>();
 		var dialog = CreateDialog(options, FileDialog.FileModeEnum.OpenDir);
+
+		var taskCompletionSource = new TaskCompletionSource<IReadOnlyList<IStorageFolder>>();
 
 		dialog.DirSelected += OnDirSelected;
 
 		void OnDirSelected(string dir) {
+			dialog.Canceled -= OnCancelled;
 			dialog.DirSelected -= OnDirSelected;
-			folders = new IStorageFolder[] { new BclStorageFolder(new DirectoryInfo(dir)) };
+			taskCompletionSource.SetResult(new IStorageFolder[] { new BclStorageFolder(new DirectoryInfo(dir)) });
+		}
+
+		dialog.Canceled += OnCancelled;
+
+		void OnCancelled() {
+			dialog.Canceled -= OnCancelled;
+			dialog.DirSelected -= OnDirSelected;
+			taskCompletionSource.SetResult(Array.Empty<BclStorageFolder>());
 		}
 
 		dialog.Show();
 
-		return Task.FromResult<IReadOnlyList<IStorageFolder>>(folders);
+		return taskCompletionSource.Task;
 	}
 
 	public Task<IStorageBookmarkFile?> OpenFileBookmarkAsync(string bookmark) {
