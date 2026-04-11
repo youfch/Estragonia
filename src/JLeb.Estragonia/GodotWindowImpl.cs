@@ -6,6 +6,8 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Input.Raw;
 using Avalonia.Platform;
+using Avalonia.Platform.Surfaces;
+using Avalonia.Controls.Platform;
 using Godot;
 using JLeb.Estragonia.Input;
 using AvCompositor = Avalonia.Rendering.Composition.Compositor;
@@ -75,7 +77,7 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 
 	public Action? GotInputWhenDisabled { get; set; }
 
-	IEnumerable<object> ITopLevelImpl.Surfaces
+	IPlatformRenderSurface[] ITopLevelImpl.Surfaces
 		=> GetOrCreateSurfaces();
 
 	IPlatformHandle? ITopLevelImpl.Handle
@@ -217,8 +219,8 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 	public GodotSkiaSurface GetOrCreateSurface()
 		=> _surface ??= CreateSurface();
 
-	private IEnumerable<object> GetOrCreateSurfaces()
-		=> new object[] { GetOrCreateSurface() };
+	private IPlatformRenderSurface[] GetOrCreateSurfaces()
+		=> new IPlatformRenderSurface[] { GetOrCreateSurface() };
 
 	public void SetRenderSize(PixelSize renderSize, double renderScaling) {
 		var hasScalingChanged = RenderScaling != renderScaling;
@@ -542,11 +544,19 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 	public void SetEnabled(bool enable) {
 	}
 
-	public void SetSystemDecorations(SystemDecorations decorations) {
+	public void SetWindowDecorations(WindowDecorations decorations) {
 		if (_gdWindow is null)
 			return;
 
-		_gdWindow.Borderless = decorations == SystemDecorations.None;
+		_gdWindow.Borderless = decorations == WindowDecorations.None;
+	}
+
+	public bool WindowStateGetterIsUsable => true;
+
+	public PlatformRequestedDrawnDecoration RequestedDrawnDecorations => PlatformRequestedDrawnDecoration.None;
+
+	public void SetExtendClientAreaChromeHints(bool preferSystemChrome) {
+		NeedsManagedDecorations = preferSystemChrome;
 	}
 
 	public void SetCanResize(bool value) {
@@ -574,10 +584,6 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 	public void SetExtendClientAreaToDecorationsHint(bool extendIntoClientAreaHint) {
 		IsClientAreaExtendedToDecorations = extendIntoClientAreaHint;
 		ExtendClientAreaToDecorationsChanged?.Invoke(extendIntoClientAreaHint);
-	}
-
-	public void SetExtendClientAreaChromeHints(ExtendClientAreaChromeHints hints) {
-		NeedsManagedDecorations = hints.HasFlag(ExtendClientAreaChromeHints.PreferSystemChrome);
 	}
 
 	public void SetExtendClientAreaTitleBarHeightHint(double titleBarHeight) {

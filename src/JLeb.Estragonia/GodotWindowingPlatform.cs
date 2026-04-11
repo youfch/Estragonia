@@ -32,4 +32,9 @@ internal sealed class GodotWindowingPlatform : IWindowingPlatform {
 	public ITrayIconImpl? CreateTrayIcon()
 		=> null;
 
+	public void GetWindowsZOrder(ReadOnlySpan<IWindowImpl> windows, Span<long> zOrder) {
+		for (var i = 0; i < windows.Length; i++)
+			zOrder[i] = i;
+	}
+
 }

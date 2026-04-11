@@ -1,7 +1,9 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.Platform;
 using Avalonia.Dialogs;
@@ -9,6 +11,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Platform;
 using Avalonia.Rendering;
+using Avalonia.Rendering.Composition;
 using Avalonia.Threading;
 using Godot;
 using JLeb.Estragonia.Input;
@@ -47,6 +50,9 @@ internal static class GodotPlatform {
 			.Bind<IPlatformSettings>().ToConstant(new GodotPlatformSettings())
 			.Bind<IRenderTimer>().ToConstant(renderTimer);
 
+		var renderLoop = RenderLoop.FromTimer(renderTimer);
+		AvaloniaLocator.CurrentMutable.Bind<IRenderLoop>().ToConstant(renderLoop);
+
 		s_compositor = new AvCompositor(platformGraphics);
 
 		var windowingPlatform = new GodotWindowingPlatform(platformGraphics, clipboard, s_compositor);
@@ -77,40 +83,46 @@ internal static class GodotPlatform {
 	}
 	
 	public static IOwnedClipboardImpl CreateHeadlessClipboardStub() {
-		// Create an instance of HeadlessClipboardImplStub via reflection, or implement your own GodotHeadlessClipboardImplStub that inherits from IOwnedClipboardImpl.
 		try {
-			// Load target assembly (Avalonia.Headless) via framework core interface for reliability
 			Assembly headlessAssembly = Assembly.Load("Avalonia.Headless");
 
-			// Get Type of internal sealed class using full qualified name
-			Type stubType = headlessAssembly.GetType(
-				"Avalonia.Headless.HeadlessClipboardImplStub",
-				throwOnError: true,
-				ignoreCase: false
-			);
+			// Try the Avalonia 12 class name first, then fallback to old name
+			Type? stubType = headlessAssembly.GetType("Avalonia.Headless.HeadlessClipboardImplStub", false, false)
+				?? headlessAssembly.GetType("Avalonia.Headless.ClipboardImplStub", false, false);
 
-			// Retrieve parameterless constructor (common for Avalonia Stub classes)
-			ConstructorInfo ctor = stubType.GetConstructor(
-				bindingAttr: BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
-				binder: null,
-				types: Type.EmptyTypes,
-				modifiers: null
-			);
-
-			if (ctor == null) {
-				throw new InvalidOperationException("Parameterless constructor not found for Avalonia.Headless.HeadlessClipboardImplStub");
+			if (stubType is null) {
+				// Search for any class implementing IOwnedClipboardImpl in the assembly
+				var iface = typeof(IOwnedClipboardImpl);
+				stubType = headlessAssembly.GetTypes().FirstOrDefault(t => iface.IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface);
 			}
 
-			// Create instance via reflection and cast to public interface
-			object instance = ctor.Invoke(null);
-			return instance as IOwnedClipboardImpl ??
-				throw new InvalidCastException("Failed to cast instance to IOwnedClipboardImpl");
+			if (stubType is not null) {
+				var ctor = stubType.GetConstructor(
+					bindingAttr: BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
+					binder: null,
+					types: Type.EmptyTypes,
+					modifiers: null
+				);
+
+				if (ctor is not null) {
+					var instance = ctor.Invoke(null);
+					if (instance is IOwnedClipboardImpl owned)
+						return owned;
+				}
+			}
 		}
-		catch (FileNotFoundException ex) {
-			throw new InvalidOperationException("Avalonia.Headless assembly not found - ensure corresponding NuGet package is installed", ex);
+		catch {
+			// Reflection failed, fall through to stub
 		}
-		catch (Exception ex) {
-			throw new InvalidOperationException("Failed to create HeadlessClipboardImplStub via reflection", ex);
-		}
+
+		return new GodotClipboardImplStub();
+	}
+
+	private sealed class GodotClipboardImplStub : IOwnedClipboardImpl {
+		public Task ClearAsync() => Task.CompletedTask;
+		public Task<IAsyncDataTransfer?> TryGetDataAsync() => Task.FromResult<IAsyncDataTransfer?>(null);
+		public Task SetDataAsync(IAsyncDataTransfer dataTransfer) => Task.CompletedTask;
+		public Task<bool> IsCurrentOwnerAsync() => Task.FromResult(false);
+		public void Dispose() { }
 	}
 }

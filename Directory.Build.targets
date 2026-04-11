@@ -1,0 +1,31 @@
+<Project>
+  <Target Name="PatchAvaloniaSkiaDll"
+          BeforeTargets="ResolvePackageAssets;ResolveAssemblyReferences"
+          Condition="'$(DisableAvaloniaSkiaPatch)' != 'true' And '$(MSBuildProjectName)' != 'PatchAvaloniaSkia'">
+
+    <PropertyGroup>
+      <_PatchToolProject>$(MSBuildThisFileDirectory)tools\PatchAvaloniaSkia\PatchAvaloniaSkia.csproj</_PatchToolProject>
+      <_PatchToolOutput>$(MSBuildThisFileDirectory)tools\PatchAvaloniaSkia\bin\Release\net8.0\PatchAvaloniaSkia.dll</_PatchToolOutput>
+    </PropertyGroup>
+
+    <!-- Build the patch tool if needed -->
+    <MSBuild Projects="$(_PatchToolProject)"
+             Targets="Build"
+             Properties="Configuration=Release;DisableAvaloniaSkiaPatch=true"
+             Condition="!Exists('$(_PatchToolOutput)')">
+    </MSBuild>
+
+    <!-- Find Avalonia.Skia.dll in NuGet packages -->
+    <PropertyGroup>
+      <_AvaloniaSkiaDllPath>$(NuGetPackageRoot)avalonia.skia\12.0.0\lib\net8.0\Avalonia.Skia.dll</_AvaloniaSkiaDllPath>
+    </PropertyGroup>
+
+    <Exec Command="dotnet &quot;$(_PatchToolOutput)&quot; &quot;$(_AvaloniaSkiaDllPath)&quot; &quot;JLeb.Estragonia&quot;"
+          Condition="Exists('$(_AvaloniaSkiaDllPath)')"
+          ConsoleToMSBuild="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_PatchOutput" />
+    </Exec>
+
+    <Message Text="$(_PatchOutput)" Importance="high" Condition="Exists('$(_AvaloniaSkiaDllPath)')" />
+  </Target>
+</Project>

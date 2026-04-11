@@ -26,14 +26,8 @@ internal sealed class GodotClipboard(IClipboardImpl clipboardImpl) : IClipboard 
 		return _clipboardImpl.ClearAsync();
 	}
 
-	public Task SetDataObjectAsync(IDataObject data)
-		=> Task.CompletedTask;
-
 	public Task<object?> GetDataAsync(string format)
 		=> Task.FromResult<object?>(null);
-
-	public Task<IDataObject?> TryGetInProcessDataObjectAsync()
-		=> Task.FromResult<IDataObject?>(null);
 
 	public Task SetDataAsync(IAsyncDataTransfer? dataTransfer) {
 		if (dataTransfer is null)

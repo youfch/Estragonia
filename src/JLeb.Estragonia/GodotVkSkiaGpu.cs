@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text.Unicode;
 using Avalonia;
 using Avalonia.Platform;
+using Avalonia.Platform.Surfaces;
 using Avalonia.Skia;
 using Godot;
 using SkiaSharp;
@@ -116,13 +117,22 @@ internal sealed class GodotVkSkiaGpu : ISkiaGpu {
 			=> NativeLibrary.TryLoad(libraryPath, out handle);
 	}
 
+	IPlatformGraphicsContext? ISkiaGpu.PlatformGraphicsContext
+		=> null;
+
+	IScopedResource<GRContext>? ISkiaGpu.TryGetGrContext()
+		=> ScopedResource<GRContext>.Create(_grContext, () => { });
+
+	bool ISkiaGpu.IsReadyToCreateRenderTarget(IEnumerable<IPlatformRenderSurface> surfaces)
+		=> true;
+
 	object? IOptionalFeatureProvider.TryGetFeature(Type featureType)
 		=> null;
 
 	IDisposable IPlatformGraphicsContext.EnsureCurrent()
 		=> EmptyDisposable.Instance;
 
-	ISkiaGpuRenderTarget? ISkiaGpu.TryCreateRenderTarget(IEnumerable<object> surfaces)
+	ISkiaGpuRenderTarget? ISkiaGpu.TryCreateRenderTarget(IEnumerable<IPlatformRenderSurface> surfaces)
 		=> surfaces.OfType<GodotSkiaSurface>().FirstOrDefault() is { } surface
 			? new GodotSkiaRenderTarget(surface, _grContext, _barrierHelper)
 			: null;

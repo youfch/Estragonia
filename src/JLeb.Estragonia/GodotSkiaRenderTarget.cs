@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using Avalonia.Platform;
 using Avalonia.Skia;
 using SkiaSharp;
 
@@ -23,7 +24,7 @@ internal sealed class GodotSkiaRenderTarget : ISkiaGpuRenderTarget {
 		_barrierHelper = barrierHelper;
 	}
 
-	public ISkiaGpuRenderSession BeginRenderingSession()
+	public ISkiaGpuRenderSession BeginRenderingSession(IRenderTarget.RenderTargetSceneInfo sceneInfo)
 		=> new GodotSkiaGpuRenderSession(_surface, _grContext, _barrierHelper);
 
 	public void Dispose() {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -17,6 +18,14 @@ namespace JLeb.Estragonia;
 
 /// <summary>Renders an Avalonia control and forwards input to it.</summary>
 public class AvaloniaControl : GdControl {
+
+	// KeyboardNavigationHandler is internal in Avalonia 12, access GetNext via reflection.
+	private static readonly MethodInfo? s_getNextMethod =
+		typeof(AvaloniaObject).Assembly.GetType("Avalonia.Input.KeyboardNavigationHandler")
+			?.GetMethod("GetNext", BindingFlags.Public | BindingFlags.Static);
+
+	private static IInputElement? GetKeyboardNavigationNext(IInputElement element, NavigationDirection direction)
+		=> (IInputElement?)s_getNextMethod?.Invoke(null, new object[] { element, direction });
 
 	private AvControl? _control;
 	private double _renderScaling = 1.0;
@@ -183,7 +192,7 @@ public class AvaloniaControl : GdControl {
 
 		_topLevel.Focus();
 
-		if (KeyboardNavigationHandler.GetNext(_topLevel, NavigationDirection.Next) is not { } inputElement)
+		if (GetKeyboardNavigationNext(_topLevel, NavigationDirection.Next) is not { } inputElement)
 			return;
 
 		NavigationMethod navigationMethod;
@@ -316,7 +325,7 @@ public class AvaloniaControl : GdControl {
 
 		while (true) {
 			// GetNext doesn't take IsEffectivelyEnabled into account, check it manually
-			var next = KeyboardNavigationHandler.GetNext(previous, direction);
+			var next = GetKeyboardNavigationNext(previous, direction);
 			if (next is null || next.IsEffectivelyEnabled)
 				return next;
 
