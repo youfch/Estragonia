@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://rd2cmut32jks"]
 
-[ext_resource type="Shader" path="res://shaders/night_sky.gdshader" id="1_k7hg5"]
-[ext_resource type="Script" path="res://scripts/UserInterface.cs" id="2_a276p"]
+[ext_resource type="Shader" uid="uid://fn8v3wxonvw5" path="res://shaders/night_sky.gdshader" id="1_k7hg5"]
+[ext_resource type="Script" uid="uid://dumjex8r3skc2" path="res://scripts/UserInterface.cs" id="2_a276p"]
 
 [sub_resource type="Environment" id="Environment_rffk7"]
 background_mode = 3

@@ -1,6 +1,6 @@
 [gd_scene load_steps=11 format=3 uid="uid://cy7yp8x3nfiva"]
 
-[ext_resource type="Script" path="res://UserInterface.cs" id="1_intl0"]
+[ext_resource type="Script" uid="uid://bpgdr08f2p4n3" path="res://UserInterface.cs" id="1_intl0"]
 [ext_resource type="Texture2D" uid="uid://vbp54an5411" path="res://icon.svg" id="1_wmsuv"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_xuun1"]
@@ -58,8 +58,8 @@ tracks/0/keys = {
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_jucv5"]
 _data = {
-"RESET": SubResource("Animation_krov7"),
-"cube_rotation": SubResource("Animation_wwi7v")
+&"RESET": SubResource("Animation_krov7"),
+&"cube_rotation": SubResource("Animation_wwi7v")
 }
 
 [node name="Root" type="Node3D"]
@@ -77,7 +77,7 @@ mesh = SubResource("BoxMesh_qchun")
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 root_node = NodePath("../Cube")
 libraries = {
-"": SubResource("AnimationLibrary_jucv5")
+&"": SubResource("AnimationLibrary_jucv5")
 }
 autoplay = "cube_rotation"
 

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<AssemblyTitle>Estragonia</AssemblyTitle>
@@ -8,7 +8,7 @@
 		<ImplicitUsings>disable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-		<LangVersion>10.0</LangVersion>
+		<LangVersion>13.0</LangVersion>
 		<AnalysisMode>Recommended</AnalysisMode>
 
 		<!-- Package -->
@@ -16,8 +16,8 @@
 		<PackageReadmeFile>readme.md</PackageReadmeFile>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
-		<PackageProjectUrl>https://github.com/MrJul/Estragonia</PackageProjectUrl>
-		<PackageReleaseNotes>https://github.com/MrJul/Estragonia/releases</PackageReleaseNotes>
+		<PackageProjectUrl>https://github.com/youfch/Estragonia</PackageProjectUrl>
+		<PackageReleaseNotes>https://github.com/youfch/Estragonia/releases</PackageReleaseNotes>
 		<Description>Estragonia is a bridge allowing the use of the Avalonia UI framework in the Godot game engine.</Description>
 		<PackageTags>avalonia;godot;ui;game</PackageTags>
 
@@ -26,19 +26,20 @@
 		<EmbedUntrackedSources>true</EmbedUntrackedSources>
 		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 
+		<PackageId>JLeb.Estragonia-Youf</PackageId>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="GodotSharp" Version="4.5.0" />
-		<PackageReference Include="Avalonia.Skia" Version="[11.2.3]" />
-		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="all" />
-		<PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="2.88.9" />
+		<PackageReference Include="Avalonia" Version="11.3.13" />
+		<PackageReference Include="Avalonia.Headless" Version="11.3.13" />
+		<PackageReference Include="GodotSharp" Version="4.4.1" />
+		<PackageReference Include="Avalonia.Skia" Version="11.3.13" />
+		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="all" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<None Include="../../readme.md" Pack="true" PackagePath="/" Visible="false" />
 	</ItemGroup>
-
 	<!--
 		Reference the Avalonia runtime assemblies (lib/) instead of the reference assemblies (ref/) from nuget packages.
 		The reference assemblies have patches to prevent using some platform interfaces we need :(

@@ -1,4 +1,4 @@
-<Project Sdk="Godot.NET.Sdk/4.5.0">
+<Project Sdk="Godot.NET.Sdk/4.6.1">
 
 	<PropertyGroup>
 		<AssemblyTitle>Estragonia GameMenu Sample</AssemblyTitle>
@@ -21,8 +21,10 @@
 	</ItemDefinitionGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Avalonia.Themes.Simple" Version="[11.2.3]" />
-		<PackageReference Include="Avalonia.Xaml.Behaviors" Version="[11.2.0.1]" />
+		<PackageReference Include="Avalonia" Version="11.3.13" />
+		<PackageReference Include="Avalonia.Skia" Version="11.3.13" />
+		<PackageReference Include="Avalonia.Themes.Simple" Version="11.3.13" />
+		<PackageReference Include="Avalonia.Xaml.Behaviors" Version="11.2.0.1" />
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
 	</ItemGroup>
 
@@ -38,6 +40,18 @@
 		<None Include="Properties/launchSettings.json" />
 		<None Include="shaders/*.gdshader" />
 		<None Include="readme.md" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Update="Godot.SourceGenerators" Version="4.3.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Update="GodotSharp" Version="4.3.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Update="GodotSharpEditor" Version="4.3.0" />
 	</ItemGroup>
 
 </Project>

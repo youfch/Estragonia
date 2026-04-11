@@ -1,4 +1,4 @@
-<Project Sdk="Godot.NET.Sdk/4.5.0">
+<Project Sdk="Godot.NET.Sdk/4.6.1">
 
 	<PropertyGroup>
 		<AssemblyTitle>Estragonia HelloWorld Sample</AssemblyTitle>
@@ -21,7 +21,9 @@
 	</ItemDefinitionGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Avalonia.Themes.Fluent" Version="[11.2.3]" />
+		<PackageReference Include="Avalonia" Version="11.3.13" />
+		<PackageReference Include="Avalonia.Skia" Version="11.3.13" />
+		<PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.13" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -35,6 +37,18 @@
 	<ItemGroup>
 		<None Include="Properties/launchSettings.json" />
 		<None Include="readme.md" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Update="Godot.SourceGenerators" Version="4.3.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Update="GodotSharp" Version="4.3.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <PackageReference Update="GodotSharpEditor" Version="4.3.0" />
 	</ItemGroup>
 
 </Project>

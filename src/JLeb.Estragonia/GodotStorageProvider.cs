@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -34,29 +34,19 @@ internal sealed class GodotStorageProvider : IStorageProvider {
 	}
 
 	public Task<IReadOnlyList<IStorageFolder>> OpenFolderPickerAsync(FolderPickerOpenOptions options) {
+		var folders = Array.Empty<IStorageFolder>();
 		var dialog = CreateDialog(options, FileDialog.FileModeEnum.OpenDir);
-
-		var taskCompletionSource = new TaskCompletionSource<IReadOnlyList<IStorageFolder>>();
 
 		dialog.DirSelected += OnDirSelected;
 
 		void OnDirSelected(string dir) {
-			dialog.Canceled -= OnCancelled;
 			dialog.DirSelected -= OnDirSelected;
-			taskCompletionSource.SetResult(new IStorageFolder[] { new BclStorageFolder(new DirectoryInfo(dir)) });
-		}
-
-		dialog.Canceled += OnCancelled;
-
-		void OnCancelled() {
-			dialog.Canceled -= OnCancelled;
-			dialog.DirSelected -= OnDirSelected;
-			taskCompletionSource.SetResult(Array.Empty<BclStorageFolder>());
+			folders = new IStorageFolder[] { new BclStorageFolder(new DirectoryInfo(dir)) };
 		}
 
 		dialog.Show();
 
-		return taskCompletionSource.Task;
+		return Task.FromResult<IReadOnlyList<IStorageFolder>>(folders);
 	}
 
 	public Task<IStorageBookmarkFile?> OpenFileBookmarkAsync(string bookmark) {
@@ -117,37 +107,26 @@ internal sealed class GodotStorageProvider : IStorageProvider {
 				dialog.AddFilter(String.Join(',', fileType.Patterns ?? Array.Empty<string>()), fileType.Name);
 		}
 
-		var taskCompletionSource = new TaskCompletionSource<IReadOnlyList<IStorageFile>>();
-
 		if (fileMode == FileDialog.FileModeEnum.OpenFiles)
 			dialog.FilesSelected += OnFilesSelected;
 		else
 			dialog.FileSelected += OnFileSelected;
 
-		dialog.Canceled += OnCancelled;
+		var storageFiles = Array.Empty<BclStorageFile>();
 
 		void OnFilesSelected(string[] paths) {
 			dialog.FilesSelected -= OnFilesSelected;
-			dialog.Canceled -= OnCancelled;
-			taskCompletionSource.SetResult(paths.Select(path => new BclStorageFile(new FileInfo(path))).ToArray());
+			storageFiles = paths.Select(path => new BclStorageFile(new FileInfo(path))).ToArray();
 		}
 
 		void OnFileSelected(string path) {
 			dialog.FileSelected -= OnFileSelected;
-			dialog.Canceled -= OnCancelled;
-			taskCompletionSource.SetResult(new[] { new BclStorageFile(new FileInfo(path)) });
-		}
-
-		void OnCancelled() {
-			dialog.Canceled -= OnCancelled;
-			dialog.FilesSelected -= OnFilesSelected;
-			dialog.FileSelected -= OnFileSelected;
-			taskCompletionSource.SetResult(Array.Empty<BclStorageFile>());
+			storageFiles = new[] { new BclStorageFile(new FileInfo(path)) };
 		}
 
 		dialog.Show();
 
-		return taskCompletionSource.Task;
+		return Task.FromResult<IReadOnlyList<IStorageFile>>(storageFiles);
 	}
 
 	private static FileDialog CreateDialog(PickerOptions options, FileDialog.FileModeEnum fileMode)
@@ -161,5 +140,5 @@ internal sealed class GodotStorageProvider : IStorageProvider {
 			Transient = true,
 			UseNativeDialog = true
 		};
-
+	public Task<SaveFilePickerResult> SaveFilePickerWithResultAsync(FilePickerSaveOptions options) => throw new NotImplementedException();
 }

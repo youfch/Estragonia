@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -57,6 +57,22 @@ internal sealed class BclStorageFolder : IStorageBookmarkFolder {
 			.Select(d => (IStorageItem) new BclStorageFolder(d))
 			.Concat(DirectoryInfo.EnumerateFiles().Select(f => new BclStorageFile(f)))
 			.AsAsyncEnumerable();
+
+	public Task<IStorageFolder?> GetFolderAsync(string name) {
+		var directory = DirectoryInfo.EnumerateDirectories().FirstOrDefault(d => d.Name == name);
+		if (directory is null)
+			return Task.FromResult<IStorageFolder?>(null);
+
+		return Task.FromResult<IStorageFolder?>(new BclStorageFolder(directory));
+	}
+
+	public Task<IStorageFile?> GetFileAsync(string name) {
+		var file = DirectoryInfo.EnumerateFiles().FirstOrDefault(f => f.Name == name);
+		if (file is null)
+			return Task.FromResult<IStorageFile?>(null);
+
+		return Task.FromResult<IStorageFile?>(new BclStorageFile(file));
+	}
 
 	public Task<string?> SaveBookmarkAsync()
 		=> Task.FromResult<string?>(DirectoryInfo.FullName);
