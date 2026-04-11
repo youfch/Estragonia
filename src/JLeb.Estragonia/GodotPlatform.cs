@@ -27,7 +27,7 @@ internal static class GodotPlatform {
 	public static void Initialize() {
 		AvaloniaSynchronizationContext.AutoInstall = false; // Godot has its own sync context, don't replace it
 
-		var platformGraphics = new GodotVkPlatformGraphics();
+		var platformGraphics = GodotPlatformGraphicsFactory.Create();
 		var renderTimer = new ManualRenderTimer();
 
 		AvaloniaLocator.CurrentMutable

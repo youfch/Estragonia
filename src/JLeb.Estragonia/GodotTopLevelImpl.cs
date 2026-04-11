@@ -19,11 +19,11 @@ namespace JLeb.Estragonia;
 /// <summary>Implementation of Avalonia <see cref="ITopLevelImpl"/> that renders to a Godot texture.</summary>
 internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 
-	private readonly GodotVkPlatformGraphics _platformGraphics;
+	private readonly IGodotPlatformGraphics _platformGraphics;
 	private readonly IClipboard _clipboard;
 	private readonly TouchDevice _touchDevice = new();
 
-	private GodotSkiaSurface? _surface;
+	private IGodotSkiaSurface? _surface;
 	private WindowTransparencyLevel _transparencyLevel = WindowTransparencyLevel.Transparent;
 	private PixelSize _renderSize;
 	private IInputRoot? _inputRoot;
@@ -76,7 +76,7 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 	AcrylicPlatformCompensationLevels ITopLevelImpl.AcrylicCompensationLevels
 		=> new(1.0, 1.0, 1.0);
 
-	public GodotTopLevelImpl(GodotVkPlatformGraphics platformGraphics, IClipboard clipboard, AvCompositor compositor) {
+	public GodotTopLevelImpl(IGodotPlatformGraphics platformGraphics, IClipboard clipboard, AvCompositor compositor) {
 		_platformGraphics = platformGraphics;
 		_clipboard = clipboard;
 		Compositor = compositor;
@@ -84,17 +84,17 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 		platformGraphics.AddRef();
 	}
 
-	private GodotSkiaSurface CreateSurface() {
+	private IGodotSkiaSurface CreateSurface() {
 		if (_isDisposed)
 			throw new ObjectDisposedException(nameof(GodotTopLevelImpl));
 
 		return _platformGraphics.GetSharedContext().CreateSurface(_renderSize, RenderScaling);
 	}
 
-	public GodotSkiaSurface? TryGetSurface()
+	public IGodotSkiaSurface? TryGetSurface()
 		=> _surface;
 
-	public GodotSkiaSurface GetOrCreateSurface()
+	public IGodotSkiaSurface GetOrCreateSurface()
 		=> _surface ??= CreateSurface();
 
 	private IEnumerable<object> GetOrCreateSurfaces()
