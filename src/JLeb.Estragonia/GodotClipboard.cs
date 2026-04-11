@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
@@ -32,8 +33,18 @@ internal sealed class GodotClipboard(IClipboardImpl clipboardImpl) : IClipboard 
 	public Task SetDataAsync(IAsyncDataTransfer? dataTransfer) {
 		if (dataTransfer is null)
 			return ClearAsync();
-		if (_clipboardImpl is IOwnedClipboardImpl)
-			_lastDataTransfer = dataTransfer;
+
+		_lastDataTransfer?.Dispose();
+		_lastDataTransfer = dataTransfer;
+
+		// Synchronize text to the Godot system clipboard so external apps can access it
+		var textItem = dataTransfer.Items.FirstOrDefault(item =>
+			item.Formats.Contains(DataFormat.Text));
+		if (textItem is not null) {
+			var text = textItem.TryGetRawAsync(DataFormat.Text).GetAwaiter().GetResult() as string;
+			DisplayServer.ClipboardSet(text);
+		}
+
 		return _clipboardImpl.SetDataAsync(dataTransfer);
 	}
 
