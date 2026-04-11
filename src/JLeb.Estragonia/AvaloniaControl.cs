@@ -162,11 +162,7 @@ public class AvaloniaControl : GdControl {
 
 	public override void _Process(double delta) {
 		GodotPlatform.TriggerRenderTick();
-
-		// We might have cleared the texture after resize to prevent corruption on AMD GPU (see GodotSkiaGpuRenderSession),
-		// force a re-render.
-		if (_topLevel?.Impl.TryGetSurface()?.DrawCount <= 2)
-			RenderAvalonia();
+		RenderAvalonia();
 	}
 
 	private PixelSize GetFrameSize()

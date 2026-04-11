@@ -17,6 +17,9 @@ internal sealed class GodotSkiaRenderTarget : ISkiaGpuRenderTarget {
 	public bool IsCorrupted
 		=> _surface.IsDisposed || _grContext.IsAbandoned || _renderScaling != _surface.RenderScaling;
 
+	public PlatformRenderTargetState State
+		=> IsCorrupted ? PlatformRenderTargetState.Corrupted : PlatformRenderTargetState.Ready;
+
 	public GodotSkiaRenderTarget(GodotSkiaSurface surface, GRContext grContext, VkBarrierHelper barrierHelper) {
 		_renderScaling = surface.RenderScaling;
 		_surface = surface;

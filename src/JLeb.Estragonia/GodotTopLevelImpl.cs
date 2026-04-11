@@ -137,8 +137,12 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 			Resized?.Invoke(ClientSize, hasScalingChanged ? WindowResizeReason.DpiChange : WindowResizeReason.Unspecified);
 	}
 
-	public void OnDraw(Rect rect)
-		=> Paint?.Invoke(rect);
+	public void OnDraw(Rect rect) {
+		if (_isDisposed)
+			return;
+
+		Paint?.Invoke(rect);
+	}
 
 	public bool OnMouseMotion(InputEventMouseMotion inputEvent, ulong timestamp) {
 		_lastMouseDeviceId = inputEvent.Device;
