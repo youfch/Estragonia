@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3 uid="uid://rd2cmut32jks"]
+[gd_scene format=3 uid="uid://rd2cmut32jks"]
 
 [ext_resource type="Shader" uid="uid://fn8v3wxonvw5" path="res://shaders/night_sky.gdshader" id="1_k7hg5"]
 [ext_resource type="Script" uid="uid://dumjex8r3skc2" path="res://scripts/UserInterface.cs" id="2_a276p"]
@@ -13,15 +13,15 @@ glow_blend_mode = 0
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_2yo11"]
 shader = ExtResource("1_k7hg5")
 
-[node name="Root" type="Node3D"]
+[node name="Root" type="Node3D" unique_id=661291291]
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2134820121]
 environment = SubResource("Environment_rffk7")
 
-[node name="Background" type="CanvasLayer" parent="."]
+[node name="Background" type="CanvasLayer" parent="." unique_id=697914872]
 layer = -100
 
-[node name="NightSky" type="Panel" parent="Background"]
+[node name="NightSky" type="Panel" parent="Background" unique_id=703484727]
 material = SubResource("ShaderMaterial_2yo11")
 anchors_preset = 15
 anchor_right = 1.0
@@ -29,11 +29,11 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Game" type="Node3D" parent="."]
+[node name="Game" type="Node3D" parent="." unique_id=1026762806]
 
-[node name="UI" type="CanvasLayer" parent="."]
+[node name="UI" type="CanvasLayer" parent="." unique_id=36156659]
 
-[node name="UserInterface" type="Control" parent="UI"]
+[node name="UserInterface" type="Control" parent="UI" unique_id=2028642763]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

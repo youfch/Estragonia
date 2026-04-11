@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Reactive;
 using Avalonia.Xaml.Interactivity;
 
 namespace GameMenu.UI.Behaviors;
@@ -22,7 +23,10 @@ public sealed class MoveFocusWhenDisabledBehavior : Behavior<Control> {
 	protected override void OnAttached() {
 		base.OnAttached();
 
-		_subscription = AssociatedObject?.GetObservable(InputElement.IsEffectivelyEnabledProperty).Subscribe(OnIsEnabledChanged);
+		if (AssociatedObject is not null) {
+			_subscription = AssociatedObject.GetObservable(InputElement.IsEffectivelyEnabledProperty)
+				.Subscribe(new AnonymousObserver<bool>(OnIsEnabledChanged));
+		}
 	}
 
 	protected override void OnDetaching() {
