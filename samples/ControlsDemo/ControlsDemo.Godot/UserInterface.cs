@@ -10,7 +10,7 @@ public partial class UserInterface : AvaloniaControl {
 	public override void _Ready() {
 		GetWindow().SetImeActive(true);
 
-		var viewModel = new MainViewModel();
+		var viewModel = new MainWindowViewModel();
 
 		Control = new MainWindow {
 			DataContext = viewModel
