@@ -22,7 +22,8 @@ public sealed class MoveFocusWhenDisabledBehavior : Behavior<Control> {
 	protected override void OnAttached() {
 		base.OnAttached();
 
-		_subscription = AssociatedObject?.GetObservable(InputElement.IsEffectivelyEnabledProperty).Subscribe(OnIsEnabledChanged);
+		_subscription = AssociatedObject?.GetObservable(InputElement.IsEffectivelyEnabledProperty)
+			.Subscribe(new ActionObserver<bool>(OnIsEnabledChanged));
 	}
 
 	protected override void OnDetaching() {
@@ -35,6 +36,14 @@ public sealed class MoveFocusWhenDisabledBehavior : Behavior<Control> {
 	private void OnIsEnabledChanged(bool isEnabled) {
 		if (!isEnabled && AssociatedObject?.IsFocused == true)
 			Target?.Focus();
+	}
+
+	private sealed class ActionObserver<T> : IObserver<T> {
+		private readonly Action<T> _action;
+		public ActionObserver(Action<T> action) => _action = action;
+		public void OnNext(T value) => _action(value);
+		public void OnError(Exception error) { }
+		public void OnCompleted() { }
 	}
 
 }
