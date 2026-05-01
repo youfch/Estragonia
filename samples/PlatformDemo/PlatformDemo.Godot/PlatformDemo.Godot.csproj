@@ -12,7 +12,7 @@
 
 	<!-- Create an executable for Avalonia designer support -->
 	<PropertyGroup Condition="$(Configuration) == 'Debug'">
-		<OutputType>Library</OutputType>
+		<OutputType>Exe</OutputType>
 		<UseAppHost>false</UseAppHost>
 	</PropertyGroup>
 

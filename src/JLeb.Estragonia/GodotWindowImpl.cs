@@ -9,6 +9,7 @@ using Avalonia.Input.Raw;
 using Avalonia.Platform;
 using Avalonia.Platform.Surfaces;
 using Godot;
+using Godot.NativeInterop;
 using JLeb.Estragonia.Input;
 using AvCompositor = Avalonia.Rendering.Composition.Compositor;
 using AvDispatcher = Avalonia.Threading.Dispatcher;
@@ -25,6 +26,7 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 	private readonly GodotTopLevelImpl _topLevelImpl;
 	private readonly Godot.Window _gdWindow;
 	private readonly WindowHostControl _hostControl;
+	private readonly GodotScreenImpl _screenImpl;
 
 	private bool _isDisposed;
 	private WindowState _windowState = WindowState.Normal;
@@ -105,6 +107,7 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 
 	public GodotWindowImpl(GodotVkPlatformGraphics platformGraphics, IClipboard clipboard, AvCompositor compositor) {
 		_topLevelImpl = new GodotTopLevelImpl(platformGraphics, clipboard, compositor);
+		_screenImpl = new GodotScreenImpl();
 
 		// Forward _topLevelImpl events to our own events
 		_topLevelImpl.Paint = rect => Paint?.Invoke(rect);
@@ -115,10 +118,11 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 		_topLevelImpl.TransparencyLevelChanged = level => TransparencyLevelChanged?.Invoke(level);
 		_topLevelImpl.CursorChanged = cursorShape => _hostControl?.SetCursor(cursorShape);
 
-		// Create the Godot Window (hidden initially)
+		// Create the Godot Window (hidden initially, borderless for Avalonia managed decorations)
 		_gdWindow = new Godot.Window {
 			Title = string.Empty,
 			Visible = false,
+			Borderless = true,
 			WrapControls = true,
 			MinSize = new Vector2I(100, 50),
 		};
@@ -249,8 +253,12 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 
 	void ITopLevelImpl.SetFrameThemeVariant(PlatformThemeVariant themeVariant) { }
 
-	object? IOptionalFeatureProvider.TryGetFeature(Type featureType)
-		=> ((ITopLevelImpl)_topLevelImpl).TryGetFeature(featureType);
+	object? IOptionalFeatureProvider.TryGetFeature(Type featureType) {
+		if (featureType == typeof(IScreenImpl))
+			return _screenImpl;
+
+		return ((ITopLevelImpl)_topLevelImpl).TryGetFeature(featureType);
+	}
 
 	// --- Godot signal handlers ---
 
@@ -316,6 +324,43 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 
 		public void SetEnabled(bool enabled)
 			=> _isEnabled = enabled;
+
+		// Godot C# requires InvokeGodotClassMethod/HasGodotClassMethod overrides for
+		// dynamically created nodes to receive virtual method callbacks like _Process, _Draw, etc.
+		protected override bool InvokeGodotClassMethod(in godot_string_name method, NativeVariantPtrArgs args, out godot_variant ret) {
+			if (method == Node.MethodName._Ready && args.Count == 0) {
+				_Ready();
+				ret = default;
+				return true;
+			}
+
+			if (method == Node.MethodName._Process && args.Count == 1) {
+				_Process(VariantUtils.ConvertTo<double>(args[0]));
+				ret = default;
+				return true;
+			}
+
+			if (method == CanvasItem.MethodName._Draw && args.Count == 0) {
+				_Draw();
+				ret = default;
+				return true;
+			}
+
+			if (method == MethodName._GuiInput && args.Count == 1) {
+				_GuiInput(VariantUtils.ConvertTo<InputEvent>(args[0]));
+				ret = default;
+				return true;
+			}
+
+			return base.InvokeGodotClassMethod(method, args, out ret);
+		}
+
+		protected override bool HasGodotClassMethod(in godot_string_name method)
+			=> method == Node.MethodName._Ready
+				|| method == Node.MethodName._Process
+				|| method == CanvasItem.MethodName._Draw
+				|| method == MethodName._GuiInput
+				|| base.HasGodotClassMethod(method);
 
 		public override void _Ready() {
 			if (Engine.IsEditorHint())
