@@ -3,94 +3,168 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-	mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+	mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
 	x:Class="HelloWorld.HelloWorldView"
-	RenderOptions.TextRenderingMode="Antialias">
+	TextOptions.TextRenderingMode="Antialias">
 
-	<UserControl.Styles>
+	<Grid RowDefinitions="Auto,*">
 
-		<Style Selector="Border.anim">
-			<Style.Animations>
-				<Animation Duration="0:0:2" IterationCount="infinite" PlaybackDirection="Alternate">
-					<KeyFrame Cue="0%">
-						<Setter Property="Background" Value="#AAFF0000" />
-					</KeyFrame>
-					<KeyFrame Cue="100%">
-						<Setter Property="Background" Value="#AA1E90FF" />
-					</KeyFrame>
-				</Animation>
-			</Style.Animations>
-		</Style>
-
-	</UserControl.Styles>
-
-	<Grid RowDefinitions="*,Auto,Auto">
-
-		<Border
-			BorderThickness="1"
-			BorderBrush="DodgerBlue"
-			CornerRadius="16"
-			Classes="anim"
-			VerticalAlignment="Top"
-			Margin="100,100,100,0">
-
-			<Grid ColumnDefinitions="Auto,*" HorizontalAlignment="Center">
-
-				<Image
-					Source="/Avalonia.png"
-					Width="64"
-					Height="64"
-					VerticalAlignment="Center"
-					Grid.Column="0" />
-
-				<TextBlock
-					Text="Hello from Avalonia in Godot!"
-					VerticalAlignment="Center"
-					TextTrimming="{x:Static TextTrimming.CharacterEllipsis}"
-					Margin="8"
-					FontSize="48"
-					Foreground="Orange"
-					Grid.Column="1" />
-
-			</Grid>
-
-		</Border>
-
-		<TextBox
-			TextWrapping="Wrap"
-			Width="200"
-			Height="160"
-			AcceptsReturn="True"
-			Grid.Row="0"
-			Margin="0,200,0,0">
-			<TextBox.Text>
-				Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-				Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-				Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-				Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-			</TextBox.Text>
-		</TextBox>
-
+		<!-- FPS Counter at top-left -->
 		<TextBlock
 			x:Name="FpsCounter"
 			Grid.Row="0"
 			HorizontalAlignment="Left"
 			VerticalAlignment="Top"
-			FontSize="24"
-			Foreground="Black" />
+			FontSize="20"
+			FontWeight="Bold"
+			Foreground="#00FF88"
+			Margin="16,12,0,8" />
 
-		<StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20" Spacing="10">
-			<Button x:Name="OpenWindowButton" Content="Open New Window" Padding="20,10" />
-			<Button x:Name="OpenFileDialogButton" Content="Open File Dialog" Padding="20,10" />
-		</StackPanel>
+		<!-- Main Content Area -->
+		<TabControl
+			Grid.Row="1"
+			Margin="16,8,16,16"
+			TabStripPlacement="Left">
 
-		<TextBlock
-			x:Name="StatusText"
-			Grid.Row="2"
-			HorizontalAlignment="Center"
-			FontSize="16"
-			Foreground="Gray"
-			Margin="0,10" />
+			<!-- Tab 1: Settings & Inputs -->
+			<TabItem Header="Settings">
+				<ScrollViewer>
+					<Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto" Margin="16">
+
+						<!-- Section: Graphics Quality -->
+						<StackPanel Grid.Column="0" Grid.Row="0" Margin="0,0,16,16">
+							<TextBlock Text="Graphics Quality" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#E0E0E0" />
+							<RadioButton x:Name="QualityLow" Content="Low" GroupName="Quality" Margin="0,2" />
+							<RadioButton x:Name="QualityMedium" Content="Medium" GroupName="Quality" IsChecked="True" Margin="0,2" />
+							<RadioButton x:Name="QualityHigh" Content="High" Margin="0,2" />
+							<RadioButton x:Name="QualityUltra" Content="Ultra" Margin="0,2" />
+						</StackPanel>
+
+						<!-- Section: Toggles -->
+						<StackPanel Grid.Column="1" Grid.Row="0" Margin="0,0,0,16">
+							<TextBlock Text="Features" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#E0E0E0" />
+							<CheckBox x:Name="VSyncCheck" Content="VSync Enabled" IsChecked="True" Margin="0,4" />
+							<CheckBox x:Name="FullscreenCheck" Content="Fullscreen" Margin="0,4" />
+							<CheckBox x:Name="ShadowsCheck" Content="Dynamic Shadows" IsChecked="True" Margin="0,4" />
+							<ToggleSwitch x:Name="MasterToggle" Content="Master Switch" IsChecked="True" Margin="0,8,0,0" />
+						</StackPanel>
+
+						<!-- Section: Audio Controls -->
+						<StackPanel Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2" Margin="0,0,0,16">
+							<TextBlock Text="Audio Settings" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#E0E0E0" />
+							<Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4">
+								<TextBlock Text="Master Volume" VerticalAlignment="Center" Width="120" />
+								<Slider x:Name="VolumeSlider" Minimum="0" Maximum="100" Value="75" TickFrequency="10" IsSnapToTickEnabled="True" Margin="8,0" />
+								<TextBlock x:Name="VolumeValue" Text="75%" VerticalAlignment="Center" Width="50" />
+							</Grid>
+							<Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4">
+								<TextBlock Text="SFX Volume" VerticalAlignment="Center" Width="120" />
+								<Slider x:Name="SfxSlider" Minimum="0" Maximum="100" Value="60" TickFrequency="10" IsSnapToTickEnabled="True" Margin="8,0" />
+								<TextBlock x:Name="SfxValue" Text="60%" VerticalAlignment="Center" Width="50" />
+							</Grid>
+							<Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4">
+								<TextBlock Text="Music Volume" VerticalAlignment="Center" Width="120" />
+								<Slider x:Name="MusicSlider" Minimum="0" Maximum="100" Value="85" TickFrequency="10" IsSnapToTickEnabled="True" Margin="8,0" />
+								<TextBlock x:Name="MusicValue" Text="85%" VerticalAlignment="Center" Width="50" />
+							</Grid>
+						</StackPanel>
+
+						<!-- Section: Resolution -->
+						<StackPanel Grid.Column="0" Grid.Row="2" Margin="0,0,16,16">
+							<TextBlock Text="Resolution" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#E0E0E0" />
+							<ComboBox x:Name="ResolutionCombo" Width="200" HorizontalAlignment="Left">
+								<ComboBoxItem>1920x1080 (1080p)</ComboBoxItem>
+								<ComboBoxItem>2560x1440 (1440p)</ComboBoxItem>
+								<ComboBoxItem>3840x2160 (4K)</ComboBoxItem>
+								<ComboBoxItem>1280x720 (720p)</ComboBoxItem>
+							</ComboBox>
+							<TextBlock x:Name="ResolutionStatus" Text="Selected: 1920x1080" Margin="0,8,0,0" Foreground="#888888" />
+						</StackPanel>
+
+						<!-- Section: Numeric Inputs -->
+						<StackPanel Grid.Column="1" Grid.Row="2" Margin="0,0,0,16">
+							<TextBlock Text="Advanced Settings" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#E0E0E0" />
+							<Grid ColumnDefinitions="Auto,*" Margin="0,4">
+								<TextBlock Text="FOV:" VerticalAlignment="Center" Margin="0,0,8,0" />
+								<NumericUpDown x:Name="FovInput" Minimum="60" Maximum="120" Value="90" Increment="5" FormatString="F0" />
+							</Grid>
+							<Grid ColumnDefinitions="Auto,*" Margin="0,4">
+								<TextBlock Text="Max FPS:" VerticalAlignment="Center" Margin="0,0,8,0" />
+								<NumericUpDown x:Name="FpsInput" Minimum="30" Maximum="240" Value="144" Increment="1" FormatString="F0" />
+							</Grid>
+						</StackPanel>
+
+						<!-- Section: Text Inputs -->
+						<StackPanel Grid.Column="0" Grid.Row="3" Grid.ColumnSpan="2" Margin="0,0,0,16">
+							<TextBlock Text="Player Profile" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#E0E0E0" />
+							<TextBox x:Name="PlayerNameInput" PlaceholderText="Enter player name..." Margin="0,4" Text="Player One" />
+							<TextBox x:Name="BioInput" PlaceholderText="Enter player bio..." AcceptsReturn="True" Height="80" TextWrapping="Wrap" Margin="0,4" Text="Avalonia UI running inside Godot Engine!" />
+						</StackPanel>
+
+						<!-- Section: Progress -->
+						<StackPanel Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="2" Margin="0,0,0,16">
+							<TextBlock Text="Loading Progress" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#E0E0E0" />
+							<ProgressBar x:Name="LoadingProgress" Minimum="0" Maximum="100" Value="0" Height="24" ShowProgressText="True" />
+							<TextBlock x:Name="ProgressStatus" Text="Waiting..." Margin="0,4,0,0" Foreground="#888888" />
+						</StackPanel>
+
+						<!-- Section: Buttons -->
+						<StackPanel Grid.Column="0" Grid.Row="5" Grid.ColumnSpan="2" Margin="0,0,0,16">
+							<TextBlock Text="Actions" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="#E0E0E0" />
+							<StackPanel Orientation="Horizontal" Spacing="12">
+								<Button x:Name="NormalButton" Content="Normal Button" />
+								<Button x:Name="AccentButton" Content="Accent Button" Classes="accent" />
+								<Button x:Name="DisabledButton" Content="Disabled" IsEnabled="False" />
+								<Button x:Name="CounterButton" Content="Click Count: 0" />
+							</StackPanel>
+						</StackPanel>
+
+						<!-- Status Area -->
+						<Border Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="2" Background="#2D2D2D" CornerRadius="4" Padding="12" Margin="0,8,0,0">
+							<TextBlock x:Name="StatusText" Text="Ready - Interactive Avalonia UI in Godot" TextWrapping="Wrap" />
+						</Border>
+
+					</Grid>
+				</ScrollViewer>
+			</TabItem>
+
+			<!-- Tab 2: Player Stats List -->
+			<TabItem Header="Player Stats">
+				<Grid RowDefinitions="Auto,*" Margin="16">
+					<TextBlock Text="Player Statistics" FontSize="22" FontWeight="Bold" Margin="0,0,0,12" Foreground="#E0E0E0" />
+					<ScrollViewer Grid.Row="1">
+						<StackPanel x:Name="StatsList" Spacing="4">
+							<!-- Stats items added via code -->
+						</StackPanel>
+					</ScrollViewer>
+				</Grid>
+			</TabItem>
+
+			<!-- Tab 3: About -->
+			<TabItem Header="About">
+				<StackPanel Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center">
+					<TextBlock Text="Estragonia Demo" FontSize="32" FontWeight="Bold" HorizontalAlignment="Center" Foreground="#00AAFF" />
+					<TextBlock Text="Avalonia UI 12.0 running inside Godot Engine" FontSize="16" HorizontalAlignment="Center" Foreground="#888888" Margin="0,8" />
+					<Border Background="#2D2D2D" CornerRadius="8" Padding="20" Margin="0,24">
+						<StackPanel Spacing="8">
+							<TextBlock Text="Features Demonstrated:" FontWeight="SemiBold" Margin="0,0,0,8" />
+							<TextBlock Text="✓ Scrollable lists with custom items" />
+							<TextBlock Text="✓ Buttons with click handlers" />
+							<TextBlock Text="✓ Text input (single &amp; multi-line)" />
+							<TextBlock Text="✓ CheckBoxes &amp; ToggleSwitches" />
+							<TextBlock Text="✓ RadioButton groups" />
+							<TextBlock Text="✓ Sliders with value binding" />
+							<TextBlock Text="✓ ComboBox dropdowns" />
+							<TextBlock Text="✓ ProgressBar animations" />
+							<TextBlock Text="✓ TabControl navigation" />
+							<TextBlock Text="✓ NumericUpDown spinners" />
+						</StackPanel>
+					</Border>
+					<TextBlock Text="Use the tabs on the left to explore all controls." FontSize="14" HorizontalAlignment="Center" Foreground="#666666" Margin="0,16" />
+				</StackPanel>
+			</TabItem>
+
+		</TabControl>
 
 	</Grid>
 
