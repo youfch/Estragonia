@@ -1,5 +1,4 @@
 ﻿using Avalonia;
-using Avalonia.Input;
 
 namespace JLeb.Estragonia;
 
@@ -10,10 +9,7 @@ public static class AppBuilderExtensions {
 		=> builder
 			.UseStandardRuntimePlatformSubsystem()
 			.UseSkia()
-			.UseWindowingSubsystem(GodotPlatform.Initialize)
-			.AfterSetup(_ =>
-				AvaloniaLocator.CurrentMutable
-					.Bind<IKeyboardNavigationHandler>().ToTransient<GodotKeyboardNavigationHandler>()
-			);
+			.UseHarfBuzz()
+			.UseWindowingSubsystem(GodotPlatform.Initialize);
 
 }

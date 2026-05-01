@@ -39,6 +39,7 @@ internal static class GodotPlatform {
 			.Bind<IPlatformIconLoader>().ToConstant(new StubPlatformIconLoader())
 			.Bind<IPlatformSettings>().ToConstant(new GodotPlatformSettings())
 			.Bind<IRenderTimer>().ToConstant(renderTimer)
+			.Bind<IRenderLoop>().ToConstant(RenderLoop.FromTimer(renderTimer))
 			.Bind<IWindowingPlatform>().ToConstant(new GodotWindowingPlatform())
 			.Bind<IStorageProviderFactory>().ToConstant(new GodotStorageProviderFactory())
 			.Bind<PlatformHotkeyConfiguration>().ToConstant(CreatePlatformHotKeyConfiguration())

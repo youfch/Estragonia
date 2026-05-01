@@ -14,10 +14,15 @@ internal sealed class GodotWindowingPlatform : IWindowingPlatform {
 	public ITopLevelImpl CreateEmbeddableTopLevel()
 		=> throw CreateNotImplementedException();
 
-	private static NotImplementedException CreateNotImplementedException()
-		=> new("Sub windows aren't implemented yet");
-
 	public ITrayIconImpl? CreateTrayIcon()
 		=> null;
+
+	public void GetWindowsZOrder(ReadOnlySpan<IWindowImpl> windows, Span<long> zOrder) {
+		// No multi-window support in Godot; fill with default ordering.
+		zOrder.Clear();
+	}
+
+	private static NotImplementedException CreateNotImplementedException()
+		=> new("Sub windows aren't implemented yet");
 
 }

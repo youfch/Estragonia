@@ -5,11 +5,14 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Platform;
+using Avalonia.Threading;
 using Godot;
 using Godot.NativeInterop;
 using JLeb.Estragonia.Input;
 using AvControl = Avalonia.Controls.Control;
+using AvDispatcher = Avalonia.Threading.Dispatcher;
 using GdControl = Godot.Control;
+using GdDispatcher = Godot.Dispatcher;
 using GdInput = Godot.Input;
 using GdKey = Godot.Key;
 
@@ -154,10 +157,11 @@ public class AvaloniaControl : GdControl {
 	public override void _Process(double delta) {
 		GodotPlatform.TriggerRenderTick();
 
-		// We might have cleared the texture after resize to prevent corruption on AMD GPU (see GodotSkiaGpuRenderSession),
-		// force a re-render.
-		if (_topLevel?.Impl.TryGetSurface()?.DrawCount <= 2)
-			RenderAvalonia();
+		// Process all queued Avalonia dispatcher work items (layout passes, animations, etc.)
+		// This ensures layout is up-to-date before we force a synchronous render.
+		AvDispatcher.UIThread.RunJobs();
+
+		RenderAvalonia();
 	}
 
 	private PixelSize GetFrameSize()
@@ -183,7 +187,7 @@ public class AvaloniaControl : GdControl {
 
 		_topLevel.Focus();
 
-		if (KeyboardNavigationHandler.GetNext(_topLevel, NavigationDirection.Next) is not { } inputElement)
+		if (_topLevel.FocusManager?.FindFirstFocusableElement() is not { } inputElement)
 			return;
 
 		NavigationMethod navigationMethod;
@@ -291,7 +295,7 @@ public class AvaloniaControl : GdControl {
 
 		// GodotTopLevel has a Continue tab navigation since we want to be able to focus the Godot controls
 		// once we're done with the Avalonia ones. However, if there's no Godot control, we want to act as Cycle.
-		var nextElement = GetNextTabElement(currentElement, direction);
+		var nextElement = GetNextTabElement(focusManager, currentElement, direction);
 		if (nextElement is null) {
 			var nextGdControl = direction switch {
 				NavigationDirection.Next => FindNextValidFocus(),
@@ -300,7 +304,7 @@ public class AvaloniaControl : GdControl {
 			};
 
 			if ((nextGdControl is null || nextGdControl == this) && (object) currentElement != _topLevel)
-				nextElement = GetNextTabElement(_topLevel, direction);
+				nextElement = GetNextTabElement(focusManager, _topLevel, direction);
 		}
 
 
@@ -311,12 +315,12 @@ public class AvaloniaControl : GdControl {
 		return true;
 	}
 
-	private static IInputElement? GetNextTabElement(IInputElement element, NavigationDirection direction) {
+	private static IInputElement? GetNextTabElement(IFocusManager focusManager, IInputElement element, NavigationDirection direction) {
 		var previous = element;
 
 		while (true) {
-			// GetNext doesn't take IsEffectivelyEnabled into account, check it manually
-			var next = KeyboardNavigationHandler.GetNext(previous, direction);
+			// FindNextElement doesn't take IsEffectivelyEnabled into account, check it manually
+			var next = focusManager.FindNextElement(direction, new FindNextElementOptions { FocusedElement = previous });
 			if (next is null || next.IsEffectivelyEnabled)
 				return next;
 
