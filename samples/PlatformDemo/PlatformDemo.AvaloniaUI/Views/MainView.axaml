@@ -22,43 +22,67 @@
         </Style>
     </UserControl.Styles>
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Margin="32" MaxWidth="520">
+    <Panel>
+        <!-- Main content -->
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="32" MaxWidth="520">
 
-            <!-- Header -->
-            <TextBlock Text="Platform Features Demo"
-                       FontSize="24" FontWeight="Bold"
-                       Foreground="#FFFFFF" Margin="0,0,0,4" />
-            <TextBlock Text="Estragonia — Avalonia platform integration showcase"
-                       FontSize="13" Foreground="#888888" Margin="0,0,0,24" />
+                <!-- Header -->
+                <TextBlock Text="Platform Features Demo"
+                           FontSize="24" FontWeight="Bold"
+                           Foreground="#FFFFFF" Margin="0,0,0,4" />
+                <TextBlock Text="Estragonia — Avalonia platform integration showcase"
+                           FontSize="13" Foreground="#888888" Margin="0,0,0,24" />
 
-            <!-- Dialogs Section -->
-            <Border Classes="card">
-                <StackPanel>
-                    <TextBlock Text="Dialogs" Classes="section-title" />
+                <!-- Dialogs Section -->
+                <Border Classes="card">
+                    <StackPanel>
+                        <TextBlock Text="Dialogs" Classes="section-title" />
 
-                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,12">
-                        <Button Content="Yes / No" Command="{Binding ShowConfirmDialogCommand}" />
-                        <Button Content="Info" Command="{Binding ShowInfoDialogCommand}" />
-                        <Button Content="Warning" Command="{Binding ShowWarningDialogCommand}" />
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,12">
+                            <Button Content="Yes / No" Command="{Binding ShowConfirmDialogCommand}" />
+                            <Button Content="Info" Command="{Binding ShowInfoDialogCommand}" />
+                            <Button Content="Warning" Command="{Binding ShowWarningDialogCommand}" />
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding DialogResultText}"
+                                   FontSize="14" Foreground="#66BB6A"
+                                   TextWrapping="Wrap" />
                     </StackPanel>
+                </Border>
 
-                    <TextBlock Text="{Binding DialogResultText}"
-                               FontSize="14" Foreground="#66BB6A"
-                               TextWrapping="Wrap" />
-                </StackPanel>
-            </Border>
+                <!-- Real Avalonia Windows -->
+                <Border Classes="card" Background="#1B5E20">
+                    <StackPanel>
+                        <TextBlock Text="Real Avalonia Windows" Classes="section-title" />
+                        <TextBlock Text="Creates real Avalonia Window instances via IWindowImpl (Godot sub-windows)."
+                                   FontSize="12" Foreground="#A5D6A7" TextWrapping="Wrap" Margin="0,0,0,12" />
 
-            <!-- Info -->
-            <Border Classes="card" Background="#1A237E">
-                <StackPanel Spacing="6">
-                    <TextBlock Text="About" FontSize="15" FontWeight="SemiBold" />
-                    <TextBlock Text="This demo showcases Avalonia platform features integrated into Godot via Estragonia. Each section tests a different platform capability."
-                               TextWrapping="Wrap" Opacity="0.8" FontSize="12" />
-                </StackPanel>
-            </Border>
+                        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,12">
+                            <Button Content="Show Window" Command="{Binding ShowRealWindowCommand}" />
+                            <Button Content="Show Dialog" Command="{Binding ShowRealDialogCommand}" />
+                        </StackPanel>
 
-        </StackPanel>
-    </ScrollViewer>
+                        <TextBlock Text="{Binding RealWindowResultText}"
+                                   FontSize="14" Foreground="#81C784"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Info -->
+                <Border Classes="card" Background="#1A237E">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="About" FontSize="15" FontWeight="SemiBold" />
+                        <TextBlock Text="This demo showcases Avalonia platform features integrated into Godot via Estragonia. Each section tests a different platform capability."
+                                   TextWrapping="Wrap" Opacity="0.8" FontSize="12" />
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Modal dialog overlay — bound to ViewModel.DialogOverlay -->
+        <ContentControl Content="{Binding DialogOverlay}" />
+    </Panel>
 
 </UserControl>

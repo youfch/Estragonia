@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -15,22 +16,112 @@ public partial class MainViewModel : ViewModelBase {
 	[ObservableProperty]
 	private string _dialogResultText = string.Empty;
 
+	[ObservableProperty]
+	private string _realWindowResultText = string.Empty;
+
+	/// <summary>
+	/// Overlay panel shown during a dialog. When null, no dialog is visible.
+	/// </summary>
+	[ObservableProperty]
+	private Border? _dialogOverlay;
+
 	[RelayCommand]
-	private async Task ShowConfirmDialogAsync() {
-		var result = await ShowYesNoDialogAsync("Avalonia", "Do you like Avalonia? Yes or No?");
-		DialogResultText = result ? "You chose: Yes!" : "You chose: No!";
+	private void ShowConfirmDialog() {
+		ShowDialog(
+			"Avalonia",
+			"Do you like Avalonia? Yes or No?",
+			("Yes", () => DialogResultText = "You chose: Yes!"),
+			("No", () => DialogResultText = "You chose: No!")
+		);
 	}
 
 	[RelayCommand]
-	private async Task ShowInfoDialogAsync() {
-		await ShowOkDialogAsync("Info", "This is an Avalonia information dialog running inside Godot.");
-		DialogResultText = "Info dialog closed.";
+	private void ShowInfoDialog() {
+		ShowDialog(
+			"Info",
+			"This is an Avalonia dialog running inside Godot via Estragonia.\n\n" +
+			"It renders as an overlay within the same visual tree — no Window or IWindowImpl needed.",
+			("OK", () => DialogResultText = "Info dialog closed.")
+		);
 	}
 
 	[RelayCommand]
-	private async Task ShowWarningDialogAsync() {
-		await ShowOkDialogAsync("Warning", "Something requires your attention!");
-		DialogResultText = "Warning dialog closed.";
+	private void ShowWarningDialog() {
+		ShowDialog(
+			"Warning",
+			"Something requires your attention!",
+			("Dismiss", () => DialogResultText = "Warning dialog closed.")
+		);
+	}
+
+	/// <summary>
+	/// Shows a real Avalonia Window using IWindowImpl (Godot sub-window).
+	/// </summary>
+	[RelayCommand]
+	private void ShowRealWindow() {
+		try {
+			Window? window = null;
+			window = new Window {
+				Title = "Real Avalonia Window",
+				Width = 420,
+				Height = 280,
+				Background = new SolidColorBrush(Color.Parse("#2D2D2D")),
+				Content = BuildRealWindowContent(
+					"Real Avalonia Window",
+					"This is a real Avalonia Window created via IWindowImpl.\n" +
+					"It uses a Godot sub-window with its own rendering surface.",
+					closeCallback: () => {
+						window!.Close();
+						RealWindowResultText = "Window closed.";
+					}
+				)
+			};
+
+			window.Show();
+			RealWindowResultText = "Window shown (non-modal).";
+		}
+		catch (Exception ex) {
+			RealWindowResultText = $"Error: {ex.Message}";
+		}
+	}
+
+	/// <summary>
+	/// Shows a real Avalonia modal dialog using IWindowImpl.
+	/// Note: ShowDialog requires an owner Window, which doesn't exist in Godot embedded mode.
+	/// This will likely fail until owner window support is implemented.
+	/// </summary>
+	[RelayCommand]
+	private async Task ShowRealDialogAsync() {
+		try {
+			// In Godot embedded mode, we don't have an owner Window (IClassicDesktopStyleApplicationLifetime).
+			// ShowDialog requires an owner. This tests the IWindowImpl path.
+			var owner = GetOwnerWindow();
+			if (owner is null) {
+				RealWindowResultText = "ShowDialog requires an owner Window — not available in Godot embedded mode. Use Show() instead.";
+				return;
+			}
+
+			Window? dialog = null;
+			dialog = new Window {
+				Title = "Real Avalonia Dialog",
+				Width = 420,
+				Height = 280,
+				WindowStartupLocation = WindowStartupLocation.CenterOwner,
+				CanResize = false,
+				Background = new SolidColorBrush(Color.Parse("#2D2D2D")),
+				Content = BuildRealWindowContent(
+					"Modal Dialog",
+					"This is a modal Avalonia dialog.\nOwner window is disabled until this closes.",
+					closeCallback: () => dialog!.Close()
+				)
+			};
+
+			await dialog.ShowDialog(owner);
+			RealWindowResultText = "Dialog closed.";
+		}
+		catch (Exception ex) {
+			RealWindowResultText = $"Error: {ex.Message}";
+		}
 	}
 
 	private static Window? GetOwnerWindow() {
@@ -39,91 +130,86 @@ public partial class MainViewModel : ViewModelBase {
 		return null;
 	}
 
-	private static async Task<bool> ShowYesNoDialogAsync(string title, string message) {
-		var owner = GetOwnerWindow();
-		if (owner is null)
-			return false;
-
-		var dialog = new Window {
-			Title = title,
-			Width = 360,
-			Height = 180,
-			WindowStartupLocation = WindowStartupLocation.CenterOwner,
-			CanResize = false,
-			Background = new SolidColorBrush(Color.Parse("#2D2D2D")),
-			Content = BuildDialogPanel(
-				message,
-				("Yes", true), ("No", false)
-			)
+	private static StackPanel BuildRealWindowContent(string title, string message, Action closeCallback) {
+		var btn = new Button {
+			Content = "Close",
+			MinWidth = 80,
+			Height = 32,
+			HorizontalAlignment = HorizontalAlignment.Right
 		};
+		btn.Click += (_, _) => closeCallback();
 
-		return await dialog.ShowDialog<bool>(owner);
-	}
-
-	private static async Task ShowOkDialogAsync(string title, string message) {
-		var owner = GetOwnerWindow();
-		if (owner is null)
-			return;
-
-		var dialog = new Window {
-			Title = title,
-			Width = 360,
-			Height = 180,
-			WindowStartupLocation = WindowStartupLocation.CenterOwner,
-			CanResize = false,
-			Background = new SolidColorBrush(Color.Parse("#2D2D2D")),
-			Content = BuildDialogPanel(
-				message,
-				("OK", null)
-			)
-		};
-
-		await dialog.ShowDialog(owner);
-	}
-
-	private static StackPanel BuildDialogPanel(string message, params (string Label, object? Result)[] buttons) {
-		var stack = new StackPanel {
+		return new StackPanel {
 			Margin = new Thickness(24),
 			Spacing = 16,
-			VerticalAlignment = VerticalAlignment.Center,
 			Children = {
 				new TextBlock {
+					Text = title,
+					FontSize = 18,
+					FontWeight = FontWeight.SemiBold,
+					Foreground = Brushes.White
+				},
+				new TextBlock {
 					Text = message,
-					FontSize = 15,
+					FontSize = 14,
 					Foreground = Brushes.White,
 					TextWrapping = TextWrapping.Wrap
-				}
+				},
+				btn
 			}
 		};
+	}
 
+	private void ShowDialog(string title, string message, params (string Label, Action OnClick)[] buttons) {
 		var buttonPanel = new StackPanel {
 			Orientation = Orientation.Horizontal,
 			HorizontalAlignment = HorizontalAlignment.Right,
 			Spacing = 10
 		};
 
-		foreach (var (label, result) in buttons) {
+		foreach (var (label, onClick) in buttons) {
 			var btn = new Button {
 				Content = label,
 				MinWidth = 80,
-				Height = 32,
-				HorizontalAlignment = HorizontalAlignment.Stretch
+				Height = 32
 			};
-
-			var capturedResult = result;
 			btn.Click += (_, _) => {
-				if (TopLevel.GetTopLevel(btn) is Window parentWindow) {
-					if (capturedResult is bool b)
-						parentWindow.Close(b);
-					else
-						parentWindow.Close();
-				}
+				onClick();
+				DialogOverlay = null;
 			};
-
 			buttonPanel.Children.Add(btn);
 		}
 
-		stack.Children.Add(buttonPanel);
-		return stack;
+		var card = new Border {
+			Background = new SolidColorBrush(Color.Parse("#2D2D2D")),
+			CornerRadius = new CornerRadius(8),
+			Padding = new Thickness(24),
+			Width = 360,
+			VerticalAlignment = VerticalAlignment.Center,
+			HorizontalAlignment = HorizontalAlignment.Center,
+			Child = new StackPanel {
+				Spacing = 16,
+				Children = {
+					new TextBlock {
+						Text = title,
+						FontSize = 18,
+						FontWeight = FontWeight.SemiBold,
+						Foreground = Brushes.White
+					},
+					new TextBlock {
+						Text = message,
+						FontSize = 14,
+						Foreground = Brushes.White,
+						TextWrapping = TextWrapping.Wrap
+					},
+					buttonPanel
+				}
+			}
+		};
+
+		DialogOverlay = new Border {
+			Background = new SolidColorBrush(Color.Parse("#80000000")),
+			Child = card
+		};
 	}
 }
