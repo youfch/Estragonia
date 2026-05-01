@@ -1,0 +1,33 @@
+<Project Sdk="Godot.NET.Sdk/4.6.2">
+
+	<PropertyGroup>
+		<AssemblyTitle>Estragonia ControlsDemo Sample</AssemblyTitle>
+		<TargetFramework>net10.0</TargetFramework>
+		<EnableDynamicLoading>true</EnableDynamicLoading>
+		<Nullable>enable</Nullable>
+		<AnalysisMode>Recommended</AnalysisMode>
+		<AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+		<IsPackable>false</IsPackable>
+	</PropertyGroup>
+
+	<!-- Create an executable for Avalonia designer support -->
+	<PropertyGroup Condition="$(Configuration) == 'Debug'">
+		<OutputType>Exe</OutputType>
+		<UseAppHost>false</UseAppHost>
+	</PropertyGroup>
+
+	<ItemDefinitionGroup>
+		<PackageReference PrivateAssets="all" />
+	</ItemDefinitionGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="../ControlsDemo.AvaloniaUI/ControlsDemo.AvaloniaUI.csproj" />
+		<ProjectReference Include="../../../src/JLeb.Estragonia/JLeb.Estragonia.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="Properties/launchSettings.json" />
+		<None Include="../readme.md" />
+	</ItemGroup>
+
+</Project>
