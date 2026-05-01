@@ -1,4 +1,4 @@
-<Project Sdk="Godot.NET.Sdk/4.6.2">
+﻿<Project Sdk="Godot.NET.Sdk/4.6.1">
 
 	<PropertyGroup>
 		<AssemblyTitle>Estragonia ControlsDemo Sample</AssemblyTitle>
@@ -10,12 +10,35 @@
 		<IsPackable>false</IsPackable>
 	</PropertyGroup>
 
+	<!-- NativeAOT -->
+	<PropertyGroup>
+		<PublishAot>true</PublishAot>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<TrimmerRootAssembly Include="$(TargetName)" />
+		<TrimmerRootAssembly Include="JLeb.Estragonia" />
+		<TrimmerRootDescriptor Include="TrimmerRoots.xml" />
+	</ItemGroup>
+
+	<!-- NativeAOT needs GodotSharp as a compile reference for ILC.
+	     The ItemDefinitionGroup below sets PrivateAssets="all" on all PackageReferences,
+	     which prevents GodotSharp from reaching ILC. Override explicitly for AOT. -->
+	<ItemGroup>
+		<PackageReference Include="GodotSharp" Version="4.6.1" PrivateAssets="none" />
+	</ItemGroup>
+
 	<!-- Create an executable for Avalonia designer support -->
 	<PropertyGroup Condition="$(Configuration) == 'Debug'">
-		<OutputType>Exe</OutputType>
+		<OutputType>Library</OutputType>
 		<UseAppHost>false</UseAppHost>
 	</PropertyGroup>
 
+	<!-- Sets PrivateAssets="all" as the default for ALL PackageReferences in this project.
+	     This prevents NuGet package dependencies from flowing to consumers of this project
+	     (i.e. it stops transitive dependency propagation). For NativeAOT, this causes a side
+	     effect: assemblies like GodotSharp are excluded from the ILC compiler's reference list,
+	     so they must be explicitly overridden with PrivateAssets="none" above. -->
 	<ItemDefinitionGroup>
 		<PackageReference PrivateAssets="all" />
 	</ItemDefinitionGroup>
