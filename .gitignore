@@ -6,3 +6,4 @@ obj/
 /_ReSharper.Caches/
 *.user
 *.blend1
+tests/

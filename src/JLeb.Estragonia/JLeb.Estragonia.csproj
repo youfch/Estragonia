@@ -9,6 +9,7 @@
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<AnalysisMode>Recommended</AnalysisMode>
+		<IsAotCompatible>true</IsAotCompatible>
 
 		<!-- Package -->
 		<IsPackable>true</IsPackable>
