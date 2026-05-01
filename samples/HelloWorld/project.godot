@@ -8,16 +8,20 @@
 
 config_version=5
 
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
 [application]
 
 config/name="HelloWorld"
 run/main_scene="res://main.tscn"
-config/features=PackedStringArray("4.3", "C#", "Forward Plus")
+config/features=PackedStringArray("4.6", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
 [autoload]
 
-AvaloniaLoader="res://AvaloniaLoader.cs"
+AvaloniaLoader="*uid://l0e1a4xwlx2f"
 
 [dotnet]
 

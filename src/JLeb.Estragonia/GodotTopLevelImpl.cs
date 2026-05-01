@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Input.Raw;
 using Avalonia.Platform;
+using Avalonia.Platform.Surfaces;
 using Godot;
 using JLeb.Estragonia.Input;
 using AvCompositor = Avalonia.Rendering.Composition.Compositor;
@@ -30,6 +31,9 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 	private GdCursorShape _cursorShape;
 	private bool _isDisposed;
 	private int _lastMouseDeviceId = GodotDevices.EmulatedDeviceId;
+
+	/// <summary>Gets the current input root for chrome hit-testing.</summary>
+	public IInputRoot? InputRoot => _inputRoot;
 
 	public double RenderScaling { get; private set; } = 1.0;
 
@@ -70,7 +74,7 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 
 	public Action<WindowTransparencyLevel>? TransparencyLevelChanged { get; set; }
 
-	IEnumerable<object> ITopLevelImpl.Surfaces
+	IPlatformRenderSurface[] ITopLevelImpl.Surfaces
 		=> GetOrCreateSurfaces();
 
 	AcrylicPlatformCompensationLevels ITopLevelImpl.AcrylicCompensationLevels
@@ -97,8 +101,8 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 	public GodotSkiaSurface GetOrCreateSurface()
 		=> _surface ??= CreateSurface();
 
-	private IEnumerable<object> GetOrCreateSurfaces()
-		=> new object[] { GetOrCreateSurface() };
+	private IPlatformRenderSurface[] GetOrCreateSurfaces()
+		=> [GetOrCreateSurface()];
 
 	[SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator", Justification = "Doesn't affect correctness")]
 	public void SetRenderSize(PixelSize renderSize, double renderScaling) {
@@ -136,8 +140,12 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 			Resized?.Invoke(ClientSize, hasScalingChanged ? WindowResizeReason.DpiChange : WindowResizeReason.Unspecified);
 	}
 
-	public void OnDraw(Rect rect)
-		=> Paint?.Invoke(rect);
+	public void OnDraw(Rect rect) {
+		if (_isDisposed)
+			return;
+
+		Paint?.Invoke(rect);
+	}
 
 	public bool OnMouseMotion(InputEventMouseMotion inputEvent, ulong timestamp) {
 		_lastMouseDeviceId = inputEvent.Device;
@@ -374,12 +382,10 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 		=> null;
 
 	void ITopLevelImpl.SetTransparencyLevelHint(IReadOnlyList<WindowTransparencyLevel> transparencyLevels) {
-		foreach (var transparencyLevel in transparencyLevels) {
-			if (transparencyLevel == WindowTransparencyLevel.Transparent || transparencyLevel == WindowTransparencyLevel.None) {
-				TransparencyLevel = transparencyLevel;
-				return;
-			}
-		}
+		// Overlay windows are always composited onto the host control's texture,
+		// so we force Transparent level regardless of what Avalonia requests.
+		// This prevents PART_TransparencyFallback from showing an opaque white background.
+		TransparencyLevel = WindowTransparencyLevel.Transparent;
 	}
 
 	void ITopLevelImpl.SetFrameThemeVariant(PlatformThemeVariant themeVariant) {

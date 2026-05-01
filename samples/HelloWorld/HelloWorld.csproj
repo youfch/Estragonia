@@ -1,8 +1,8 @@
-<Project Sdk="Godot.NET.Sdk/4.3.0">
+﻿<Project Sdk="Godot.NET.Sdk/4.6.1">
 
 	<PropertyGroup>
 		<AssemblyTitle>Estragonia HelloWorld Sample</AssemblyTitle>
-		<TargetFramework>net6.0</TargetFramework>
+		<TargetFramework>net10.0</TargetFramework>
 		<EnableDynamicLoading>true</EnableDynamicLoading>
 		<Nullable>enable</Nullable>
 		<AnalysisMode>Recommended</AnalysisMode>
@@ -10,18 +10,43 @@
 		<IsPackable>false</IsPackable>
 	</PropertyGroup>
 
+	<!-- NativeAOT -->
+	<PropertyGroup>
+		<PublishAot>true</PublishAot>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<TrimmerRootAssembly Include="$(TargetName)" />
+		<TrimmerRootAssembly Include="GodotSharp" />
+		<TrimmerRootAssembly Include="JLeb.Estragonia" />
+		<TrimmerRootDescriptor Include="TrimmerRoots.xml" />
+	</ItemGroup>
+
+	<!-- NativeAOT needs GodotSharp as a compile reference for ILC.
+	     The ItemDefinitionGroup below sets PrivateAssets="all" on all PackageReferences,
+	     which prevents GodotSharp from reaching ILC. Override explicitly for AOT. -->
+	<ItemGroup>
+		<PackageReference Include="GodotSharp" Version="4.6.1" PrivateAssets="none" />
+	</ItemGroup>
+
 	<!-- Create an executable for Avalonia designer support -->
 	<PropertyGroup Condition="$(Configuration) == 'Debug'">
 		<OutputType>Exe</OutputType>
 		<UseAppHost>false</UseAppHost>
 	</PropertyGroup>
 
+	<!-- Sets PrivateAssets="all" as the default for ALL PackageReferences in this project.
+	     This prevents NuGet package dependencies from flowing to consumers of this project
+	     (i.e. it stops transitive dependency propagation). For NativeAOT, this causes a side
+	     effect: assemblies like GodotSharp are excluded from the ILC compiler's reference list,
+	     so they must be explicitly overridden with PrivateAssets="none" above. -->
 	<ItemDefinitionGroup>
 		<PackageReference PrivateAssets="all" />
 	</ItemDefinitionGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Avalonia.Themes.Fluent" Version="[11.2.3]" />
+		<PackageReference Include="Avalonia.Themes.Fluent" Version="12.*" PrivateAssets="none" />
+		<PackageReference Include="Avalonia.HarfBuzz" Version="12.*" PrivateAssets="none" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -33,8 +58,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Include="Properties/launchSettings.json"/>
-		<None Include="readme.md"/>
+	  <Content Include="TrimmerRoots.xml" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="Properties/launchSettings.json" />
+		<None Include="readme.md" />
 	</ItemGroup>
 
 </Project>
