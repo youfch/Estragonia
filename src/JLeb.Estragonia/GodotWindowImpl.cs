@@ -121,8 +121,11 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 		var sceneTree = (SceneTree)Engine.GetMainLoop();
 
 		sceneTree.Root.GuiEmbedSubwindows = false;
-		_gdWindow.Size = _pendingSize;
 		sceneTree.Root.AddChild(_gdWindow);
+
+		// Apply pending size AFTER AddChild so the window is registered
+		// in DisplayServer before OnSizeChanged fires.
+		_gdWindow.Size = _pendingSize;
 
 		// Defer initial positioning (Godot bug #89372)
 		var mainWinSize = sceneTree.Root.Size;
@@ -195,13 +198,19 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 	}
 
 	private void OnSizeChanged() {
+		if (_isDisposed) return;
+
 		var size = _gdWindow.Size;
 		_topLevelImpl.SetRenderSize(new PixelSize(Math.Max((int)size.X, 1), Math.Max((int)size.Y, 1)), 1.0);
 
-		var windowId = _gdWindow.GetWindowId();
-		var actualPos = DisplayServer.WindowGetPosition(windowId);
-		Position = new PixelPoint(actualPos.X, actualPos.Y);
-		PositionChanged?.Invoke(Position);
+		// DisplayServer.WindowGetPosition fails if window isn't registered yet
+		// (e.g., Size set before AddChild) or already removed (during Dispose).
+		if (_isVisible && _gdWindow.IsInsideTree()) {
+			var windowId = _gdWindow.GetWindowId();
+			var actualPos = DisplayServer.WindowGetPosition(windowId);
+			Position = new PixelPoint(actualPos.X, actualPos.Y);
+			PositionChanged?.Invoke(Position);
+		}
 
 		var newAvState = _gdWindow.Mode switch {
 			Godot.Window.ModeEnum.Maximized => WindowState.Maximized,
@@ -233,7 +242,18 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 	public void Dispose() {
 		if (_isDisposed) return;
 		_isDisposed = true; _isVisible = false;
-		if (GodotObject.IsInstanceValid(_gdWindow) && _gdWindow.IsInsideTree()) { _gdWindow.GetParent()?.RemoveChild(_gdWindow); _gdWindow.QueueFree(); }
+
+		// Unsubscribe events BEFORE removing from tree to prevent
+		// OnSizeChanged from firing on an invalid window.
+		if (GodotObject.IsInstanceValid(_gdWindow)) {
+			_gdWindow.CloseRequested -= OnCloseRequested;
+			_gdWindow.SizeChanged -= OnSizeChanged;
+			_gdWindow.WindowInput -= OnWindowInput;
+			if (_gdWindow.IsInsideTree()) {
+				_gdWindow.GetParent()?.RemoveChild(_gdWindow);
+				_gdWindow.QueueFree();
+			}
+		}
 		_topLevelImpl.Dispose();
 		Closed?.Invoke();
 	}

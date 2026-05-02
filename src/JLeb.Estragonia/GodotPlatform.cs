@@ -20,9 +20,20 @@ internal static class GodotPlatform {
 	private static AvCompositor? s_compositor;
 	private static ManualRenderTimer? s_renderTimer;
 	private static ulong s_lastProcessFrame = UInt64.MaxValue;
+	private static GodotApplicationLifetime? s_lifetime;
 
 	public static AvCompositor Compositor
 		=> s_compositor ?? throw new InvalidOperationException($"{nameof(GodotPlatform)} hasn't been initialized");
+
+	/// <summary>
+	/// Creates and initializes the <see cref="GodotApplicationLifetime" /> for use with
+	/// <see cref="AppBuilder.SetupWithLifetime" />.
+	/// </summary>
+	public static GodotApplicationLifetime CreateApplicationLifetime() {
+		s_lifetime = new GodotApplicationLifetime();
+		s_lifetime.Initialize();
+		return s_lifetime;
+	}
 
 	public static void Initialize() {
 		AvaloniaSynchronizationContext.AutoInstall = false; // Godot has its own sync context, don't replace it
