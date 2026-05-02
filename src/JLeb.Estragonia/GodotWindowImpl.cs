@@ -129,6 +129,7 @@ namespace JLeb.Estragonia;
 			MinSize = new Vector2I(100, 50),
 			Size = new Vector2I(400, 300)
 		};
+		_gdWindow.AddToGroup("avalonia_windows");
 		_hostControl = new WindowHostControl(this);
 		_gdWindow.AddChild(_hostControl);
 		_topLevelImpl.CursorChanged = cursorShape => _hostControl.SetCursor(cursorShape);
@@ -339,6 +340,11 @@ namespace JLeb.Estragonia;
 			_gdWindow.WindowInput -= OnWindowInput;
 			_gdWindow.FilesDropped -= OnFilesDropped;
 			if (_gdWindow.IsInsideTree()) {
+				// Hide first to stop Godot from pushing input events to
+				// a window that's about to be removed from the scene tree.
+				// Without this, _push_unhandled_input_internal fires after
+				// RemoveChild/QueueFree with !is_inside_tree() error.
+				_gdWindow.Visible = false;
 				_gdWindow.GetParent()?.RemoveChild(_gdWindow);
 				_gdWindow.QueueFree();
 			}
