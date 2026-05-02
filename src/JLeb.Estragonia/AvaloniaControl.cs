@@ -26,6 +26,19 @@ public class AvaloniaControl : GdControl {
 	private GodotTopLevel? _topLevel;
 	private Godot.Window? _connectedWindow;
 
+	/// <summary>
+	/// Whether an OS file drag session is currently in progress over this control.
+	/// Set to true when mouse enters from outside the window while no buttons are pressed
+	/// (heuristic for OS file drag-and-drop).
+	/// </summary>
+	private bool _osdDragHovering;
+
+	/// <summary>
+	/// Whether the mouse recently entered the window (not yet determined if it's
+	/// a normal move or an OS file drag). Reset after the first mouse event.
+	/// </summary>
+	private bool _mouseJustEnteredWindow;
+
 	/// <summary>Gets or sets the underlying Avalonia control that will be rendered.</summary>
 	public AvControl? Control {
 		get => _control;
@@ -154,6 +167,8 @@ public class AvaloniaControl : GdControl {
 		// Connect to the root window's FilesDropped signal for OS file drag-and-drop
 		var rootWindow = GetTree().Root;
 		rootWindow.FilesDropped += OnFilesDropped;
+		rootWindow.MouseEntered += OnRootMouseEntered;
+		rootWindow.MouseExited += OnRootMouseExited;
 		_connectedWindow = rootWindow;
 
 		if (HasFocus())
@@ -222,6 +237,34 @@ public class AvaloniaControl : GdControl {
 	public override void _GuiInput(InputEvent @event) {
 		if (_topLevel is null)
 			return;
+
+		// Detect OS file drag-and-drop hover:
+		// When files are dragged from the OS file manager into the window,
+		// Godot sends InputEventMouseMotion with no button mask.
+		// We detect this only right after MouseEntered fires (mouse came from
+		// outside the window), which distinguishes OS drag from normal mouse movement.
+		if (_mouseJustEnteredWindow && @event is InputEventMouseMotion motion && motion.ButtonMask == 0) {
+			// Mouse entered from outside with no buttons — likely an OS file drag
+			_mouseJustEnteredWindow = false;
+			var localPos = motion.Position;
+			if (_topLevel.Impl.OnOsdDragEnter(localPos, Time.GetTicksMsec())) {
+				_osdDragHovering = true;
+				AcceptEvent();
+				return;
+			}
+			_mouseJustEnteredWindow = false;
+		} else if (_mouseJustEnteredWindow) {
+			// First event after entering was a button press or something else — not an OS drag
+			_mouseJustEnteredWindow = false;
+		}
+
+		// Continue OS drag hover — synthesize DragOver on each mouse motion
+		if (_osdDragHovering && @event is InputEventMouseMotion hoverMotion) {
+			var localPos = hoverMotion.Position;
+			if (_topLevel.Impl.OnOsdDragOver(localPos, Time.GetTicksMsec()))
+				AcceptEvent();
+			return;
+		}
 
 		if (TryHandleInput(_topLevel.Impl, @event) || TryHandleAction(@event))
 			AcceptEvent();
@@ -336,12 +379,35 @@ public class AvaloniaControl : GdControl {
 		}
 	}
 
-	private void OnMouseExited()
-		=> _topLevel?.Impl.OnMouseExited(Time.GetTicksMsec());
+	private void OnMouseExited() {
+		// End OS drag hover session when mouse leaves the control
+		if (_osdDragHovering) {
+			_osdDragHovering = false;
+			_topLevel?.Impl.OnOsdDragLeave();
+		}
+
+		_topLevel?.Impl.OnMouseExited(Time.GetTicksMsec());
+	}
+
+	private void OnRootMouseEntered() {
+		// Flag that mouse just entered from outside — used to detect OS file drag
+		_mouseJustEnteredWindow = true;
+	}
+
+	private void OnRootMouseExited() {
+		// End OS drag hover session when mouse leaves the window
+		if (_osdDragHovering) {
+			_osdDragHovering = false;
+			_topLevel?.Impl.OnOsdDragLeave();
+		}
+		_mouseJustEnteredWindow = false;
+	}
 
 	private void OnFilesDropped(string[] files) {
 		if (_topLevel is null || files.Length == 0)
 			return;
+
+		_osdDragHovering = false;
 
 		// Get the mouse position relative to this control
 		var mousePos = GetGlobalMousePosition();
@@ -364,6 +430,8 @@ public class AvaloniaControl : GdControl {
 
 			if (_connectedWindow is not null) {
 				_connectedWindow.FilesDropped -= OnFilesDropped;
+				_connectedWindow.MouseEntered -= OnRootMouseEntered;
+				_connectedWindow.MouseExited -= OnRootMouseExited;
 				_connectedWindow = null;
 			}
 
