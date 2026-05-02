@@ -260,7 +260,17 @@ namespace JLeb.Estragonia;
 		if (_isDisposed) return;
 
 		var size = _gdWindow.Size;
-		_topLevelImpl.SetRenderSize(new PixelSize(Math.Max((int)size.X, 1), Math.Max((int)size.Y, 1)), 1.0);
+		var pixelSize = new PixelSize(Math.Max((int)size.X, 1), Math.Max((int)size.Y, 1));
+
+		// Only push the size to Avalonia if it changed externally (user resize,
+		// maximize, etc.). Skip when Resize() already updated _lastProcessRenderSize
+		// to match — this prevents the feedback loop:
+		//   Resize() → _gdWindow.Size = X → OnSizeChanged → SetRenderSize →
+		//   Resized → layout → Resize() → _gdWindow.Size = X → OnSizeChanged → ...
+		if (pixelSize != _lastProcessRenderSize) {
+			_lastProcessRenderSize = pixelSize;
+			_topLevelImpl.SetRenderSize(pixelSize, 1.0);
+		}
 
 		// DisplayServer.WindowGetPosition fails if window isn't registered yet
 		// (e.g., Size set before AddChild) or already removed (during Dispose).
