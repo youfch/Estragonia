@@ -49,7 +49,11 @@ internal static class GodotPlatform {
 				// in the visual tree. By providing a Window as ContentRootFactory, PrepareRoot()
 				// returns a Window and Show() takes the ShowAsWindow() path, which creates
 				// an overlay window via GodotWindowingPlatform.CreateWindow().
-				ContentRootFactory = () => new Avalonia.Controls.Window()
+				// SizeToContent.WidthAndHeight makes the dialog auto-size to its content
+				// (ManagedFileChooser needs ~900x500+ to display properly).
+				ContentRootFactory = () => new Avalonia.Controls.Window {
+					SizeToContent = Avalonia.Controls.SizeToContent.WidthAndHeight
+				}
 			});
 
 		s_renderTimer = renderTimer;

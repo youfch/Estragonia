@@ -32,6 +32,9 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 	private bool _isDisposed;
 	private int _lastMouseDeviceId = GodotDevices.EmulatedDeviceId;
 
+	/// <summary>Gets the current input root for chrome hit-testing.</summary>
+	public IInputRoot? InputRoot => _inputRoot;
+
 	public double RenderScaling { get; private set; } = 1.0;
 
 	double ITopLevelImpl.DesktopScaling
