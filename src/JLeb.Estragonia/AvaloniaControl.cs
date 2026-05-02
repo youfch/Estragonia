@@ -24,6 +24,7 @@ public class AvaloniaControl : GdControl {
 	private AvControl? _control;
 	private double _renderScaling = 1.0;
 	private GodotTopLevel? _topLevel;
+	private Godot.Window? _connectedWindow;
 
 	/// <summary>Gets or sets the underlying Avalonia control that will be rendered.</summary>
 	public AvControl? Control {
@@ -149,6 +150,11 @@ public class AvaloniaControl : GdControl {
 		FocusEntered += OnFocusEntered;
 		FocusExited += OnFocusExited;
 		MouseExited += OnMouseExited;
+
+		// Connect to the root window's FilesDropped signal for OS file drag-and-drop
+		var rootWindow = GetTree().Root;
+		rootWindow.FilesDropped += OnFilesDropped;
+		_connectedWindow = rootWindow;
 
 		if (HasFocus())
 			OnFocusEntered();
@@ -333,6 +339,18 @@ public class AvaloniaControl : GdControl {
 	private void OnMouseExited()
 		=> _topLevel?.Impl.OnMouseExited(Time.GetTicksMsec());
 
+	private void OnFilesDropped(string[] files) {
+		if (_topLevel is null || files.Length == 0)
+			return;
+
+		// Get the mouse position relative to this control
+		var mousePos = GetGlobalMousePosition();
+		var localPos = mousePos - GlobalPosition;
+
+		if (_topLevel.Impl.OnFilesDropped(files, localPos, Time.GetTicksMsec()))
+			AcceptEvent();
+	}
+
 	public override bool _HasPoint(Vector2 point)
 		=> _topLevel?.InputHitTest(point.ToAvaloniaPoint() / _topLevel.RenderScaling, false) is not null;
 
@@ -343,6 +361,11 @@ public class AvaloniaControl : GdControl {
 			FocusEntered -= OnFocusEntered;
 			FocusExited -= OnFocusExited;
 			MouseExited -= OnMouseExited;
+
+			if (_connectedWindow is not null) {
+				_connectedWindow.FilesDropped -= OnFilesDropped;
+				_connectedWindow = null;
+			}
 
 			_topLevel.Dispose();
 			_topLevel = null;

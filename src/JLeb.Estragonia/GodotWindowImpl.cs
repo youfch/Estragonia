@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
@@ -100,8 +101,17 @@ namespace JLeb.Estragonia;
 	public Thickness OffScreenMargin => default;
 	public PlatformAllowedWindowActions AllowedWindowActions => PlatformAllowedWindowActions.All;
 
+		private static int _dialogSeq; // per-instance sequence for log correlation
+		// Tracks the maximum Y seen from Avalonia layout for managed dialogs.
+		// Avalonia's ManagedFileChooser accumulates internal state (QuickLinks/volumes)
+		// across opens, causing layout to measure progressively larger Y values.
+		// We clamp to the first measured Y to prevent this growth.
+		private static int s_clampedDialogHeight;
+
 	public GodotWindowImpl(GodotVkPlatformGraphics platformGraphics, IClipboard clipboard, AvCompositor compositor) {
 		_isManagedDialog = GodotPlatform.IsManagedDialogWindow;
+		if (_isManagedDialog)
+			GD.Print($"[Dialog#{Interlocked.Increment(ref _dialogSeq)}] new GodotWindowImpl");
 		_topLevelImpl = new GodotTopLevelImpl(platformGraphics, clipboard, compositor);
 		_screenImpl = new GodotScreenImpl();
 		_topLevelImpl.Paint = rect => Paint?.Invoke(rect);
@@ -130,11 +140,15 @@ namespace JLeb.Estragonia;
 		_gdWindow.CloseRequested += OnCloseRequested;
 		_gdWindow.SizeChanged += OnSizeChanged;
 		_gdWindow.WindowInput += OnWindowInput;
+		_gdWindow.FilesDropped += OnFilesDropped;
 	}
 
 	public void Show(bool activate, bool isDialog) {
 		if (_isDisposed || _isVisible) return;
 		var sceneTree = (SceneTree)Engine.GetMainLoop();
+
+		if (_isManagedDialog)
+			GD.Print($"[Dialog] Show: pendingSize={_pendingSize}, lastRender={_lastProcessRenderSize}");
 
 		sceneTree.Root.GuiEmbedSubwindows = false;
 
@@ -177,7 +191,10 @@ namespace JLeb.Estragonia;
 
 		var size = _gdWindow.Size;
 		_lastProcessRenderSize = new PixelSize(Math.Max((int)size.X, 1), Math.Max((int)size.Y, 1));
-		_topLevelImpl.SetRenderSize(_lastProcessRenderSize, 1.0);
+		// Use UpdateClientSize (no Resized event) to sync the render surface.
+		// SetRenderSize would fire Resized → layout → Resize, which can cause
+		// SizeToContent windows to accumulate Y-axis growth across dialog opens.
+		_topLevelImpl.UpdateClientSize(_lastProcessRenderSize, 1.0);
 		// For SizeToContent windows (e.g. managed file dialogs), the initial 400×300
 		// will be replaced by Avalonia's layout-determined size on the first _Process tick.
 		// Flag that we need to re-center after that happens.
@@ -209,8 +226,24 @@ namespace JLeb.Estragonia;
 	public void BeginResizeDrag(WindowEdge edge, PointerPressedEventArgs e) { }
 
 	public void Resize(Size clientSize, WindowResizeReason reason = WindowResizeReason.Application) {
+		// Avalonia's ManagedFileChooser accumulates internal state across dialog opens,
+		// causing layout to measure progressively larger Y values. Clamp to the first
+		// measured height to prevent this growth while still allowing Avalonia to
+		// determine the initial size via SizeToContent.WidthAndHeight.
+		if (_isManagedDialog && clientSize.Height > 0) {
+			var clampedH = (int)clientSize.Height;
+			if (s_clampedDialogHeight == 0) {
+				// First open — record the height as the canonical maximum.
+				s_clampedDialogHeight = clampedH;
+			} else if (clampedH > s_clampedDialogHeight) {
+				// Subsequent open grew — clamp to the first measured height.
+				clientSize = clientSize.WithHeight(s_clampedDialogHeight);
+			}
+		}
 		var pixelSize = new Vector2I(Math.Max((int)clientSize.Width, 1), Math.Max((int)clientSize.Height, 1));
 		var pxSize = new PixelSize(pixelSize.X, pixelSize.Y);
+		if (_isManagedDialog)
+			GD.Print($"[Dialog] Resize: clientSize={clientSize}, reason={reason}, lastRender={_lastProcessRenderSize}, visible={_isVisible}, clamp={s_clampedDialogHeight}");
 		_pendingSize = pixelSize;
 		if (_isVisible && _gdWindow.IsInsideTree())
 			_gdWindow.Size = pixelSize;
@@ -268,8 +301,12 @@ namespace JLeb.Estragonia;
 		//   Resize() → _gdWindow.Size = X → OnSizeChanged → SetRenderSize →
 		//   Resized → layout → Resize() → _gdWindow.Size = X → OnSizeChanged → ...
 		if (pixelSize != _lastProcessRenderSize) {
+			if (_isManagedDialog)
+				GD.Print($"[Dialog] OnSizeChanged EXTERNAL: gdSize={pixelSize}, lastRender={_lastProcessRenderSize} → SetRenderSize");
 			_lastProcessRenderSize = pixelSize;
 			_topLevelImpl.SetRenderSize(pixelSize, 1.0);
+		} else if (_isManagedDialog) {
+			GD.Print($"[Dialog] OnSizeChanged SKIP (matches lastRender): gdSize={pixelSize}");
 		}
 
 		// DisplayServer.WindowGetPosition fails if window isn't registered yet
@@ -308,6 +345,15 @@ namespace JLeb.Estragonia;
 		};
 	}
 
+	private void OnFilesDropped(string[] files) {
+		if (_isDisposed || files.Length == 0)
+			return;
+
+		// Get mouse position relative to the window content area
+		var mousePos = _gdWindow.GetMousePosition();
+		_topLevelImpl.OnFilesDropped(files, mousePos, Time.GetTicksMsec());
+	}
+
 	public void Dispose() {
 		if (_isDisposed) return;
 		_isDisposed = true; _isVisible = false;
@@ -318,6 +364,7 @@ namespace JLeb.Estragonia;
 			_gdWindow.CloseRequested -= OnCloseRequested;
 			_gdWindow.SizeChanged -= OnSizeChanged;
 			_gdWindow.WindowInput -= OnWindowInput;
+			_gdWindow.FilesDropped -= OnFilesDropped;
 			if (_gdWindow.IsInsideTree()) {
 				_gdWindow.GetParent()?.RemoveChild(_gdWindow);
 				_gdWindow.QueueFree();
@@ -365,6 +412,8 @@ namespace JLeb.Estragonia;
 			// SizeToContent where SetRenderSize → Resized → layout → Resize grows
 			// the window each frame.
 			if (pixelSize != _owner._lastProcessRenderSize) {
+				if (_owner._isManagedDialog)
+					GD.Print($"[Dialog] _Process SIZE DIFF: gdSize={pixelSize}, lastRender={_owner._lastProcessRenderSize} → SetRenderSize + RunJobs");
 				_owner._lastProcessRenderSize = pixelSize;
 				_owner._topLevelImpl.SetRenderSize(pixelSize, 1.0);
 				// Run queued layout jobs triggered by SetRenderSize before drawing.

@@ -39,6 +39,29 @@ public partial class MainViewModel : ViewModelBase {
 	[ObservableProperty]
 	private string? _folderPath;
 
+	[ObservableProperty]
+	private string _dropResultText = "将文件拖放到下方区域";
+
+	[ObservableProperty]
+	private bool _isDragOver;
+
+	public void HandleDrop(IReadOnlyList<IStorageItem> items) {
+		if (items.Count == 0) {
+			DropResultText = "未接收到文件。";
+			return;
+		}
+
+		var paths = new List<string>();
+		foreach (var item in items) {
+			var path = item.TryGetLocalPath() ?? item.Name;
+			paths.Add(path);
+		}
+
+		DropResultText = items.Count == 1
+			? $"已接收文件: {paths[0]}"
+			: $"已接收 {items.Count} 个文件:\n{string.Join("\n", paths)}";
+	}
+
 	[RelayCommand]
 	private void FileSelected(IReadOnlyList<IStorageItem> items) {
 		FileDialogResultText = items.Count > 0

@@ -99,6 +99,30 @@
                     </StackPanel>
                 </Border>
 
+                <!-- File Drag & Drop Section -->
+                <Border Classes="card" Background="#004D40">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="File Drag &amp; Drop" Classes="section-title" />
+                        <TextBlock Text="将文件从系统文件管理器拖放到下方区域，显示文件路径。"
+                                   FontSize="12" Foreground="#80CBC4" TextWrapping="Wrap" />
+
+                        <Border x:Name="DropZone"
+                                BorderBrush="#4DB6AC" BorderThickness="2"
+                                CornerRadius="6" Padding="20" MinHeight="80"
+                                Background="#00251A"
+                                DragDrop.AllowDrop="True">
+                            <TextBlock Text="📂 拖放文件到此处"
+                                       FontSize="15" Foreground="#80CBC4"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center" />
+                        </Border>
+
+                        <TextBlock Text="{Binding DropResultText}"
+                                   FontSize="14" Foreground="#4DB6AC"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
                 <!-- Info -->
                 <Border Classes="card" Background="#1A237E">
                     <StackPanel Spacing="6">
