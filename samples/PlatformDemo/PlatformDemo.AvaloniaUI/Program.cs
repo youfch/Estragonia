@@ -1,5 +1,6 @@
 using System;
 using Avalonia;
+using Avalonia.Dialogs;
 
 namespace PlatformDemo.AvaloniaUI;
 
@@ -10,7 +11,7 @@ internal sealed class Program {
 
 	public static AppBuilder BuildAvaloniaApp()
 		=> AppBuilder.Configure<App>()
+			.UseManagedSystemDialogs()
 			.UsePlatformDetect()
-			.WithInterFont()
 			.LogToTrace();
 }

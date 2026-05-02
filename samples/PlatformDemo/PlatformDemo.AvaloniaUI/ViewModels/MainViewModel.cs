@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -6,6 +7,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Platform.Storage;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -24,6 +26,25 @@ public partial class MainViewModel : ViewModelBase {
 	/// </summary>
 	[ObservableProperty]
 	private Border? _dialogOverlay;
+
+	[ObservableProperty]
+	private string _fileDialogResultText = string.Empty;
+
+	[ObservableProperty]
+	private string? _openFilePath;
+
+	[ObservableProperty]
+	private string? _saveFilePath;
+
+	[ObservableProperty]
+	private string? _folderPath;
+
+	[RelayCommand]
+	private void FileSelected(IReadOnlyList<IStorageItem> items) {
+		FileDialogResultText = items.Count > 0
+			? $"已选择: {items[0].TryGetLocalPath() ?? items[0].Name}"
+			: "未选择。";
+	}
 
 	[RelayCommand]
 	private void ShowConfirmDialog() {

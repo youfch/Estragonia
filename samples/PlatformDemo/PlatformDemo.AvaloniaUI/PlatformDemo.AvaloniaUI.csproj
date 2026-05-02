@@ -15,8 +15,8 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.*" />
     <PackageReference Include="Avalonia.Desktop" Version="12.*" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.*" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.*" />
+    <PackageReference Include="Irihi.Ursa" Version="2.0.0" />
+    <PackageReference Include="Irihi.Ursa.Themes.Semi" Version="2.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
   </ItemGroup>
 </Project>

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="PlatformDemo.AvaloniaUI.App"
              xmlns:local="using:PlatformDemo.AvaloniaUI"
+             xmlns:semi="https://irihi.tech/semi"
              RequestedThemeVariant="Dark">
 
     <Application.DataTemplates>
@@ -9,6 +10,7 @@
     </Application.DataTemplates>
 
     <Application.Styles>
-        <FluentTheme />
+        <semi:SemiTheme Locale="zh-CN" />
+        <semi:UrsaSemiTheme Locale="zh-CN" />
     </Application.Styles>
 </Application>

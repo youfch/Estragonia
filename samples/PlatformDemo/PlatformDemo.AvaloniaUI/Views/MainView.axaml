@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:PlatformDemo.AvaloniaUI.ViewModels"
+        xmlns:u="https://irihi.tech/ursa"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
@@ -65,6 +66,35 @@
 
                         <TextBlock Text="{Binding RealWindowResultText}"
                                    FontSize="14" Foreground="#81C784"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- File Dialogs Section -->
+                <Border Classes="card" Background="#4A148C">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="File Dialogs" Classes="section-title" />
+                        <TextBlock Text="Ursa PathPicker — file open/save and folder picker."
+                                   FontSize="12" Foreground="#CE93D8" TextWrapping="Wrap" />
+
+                        <u:PathPicker Title="选择文件"
+                                      UsePickerType="OpenFile"
+                                      SelectedPathsText="{Binding OpenFilePath, Mode=OneWayToSource}"
+                                      Command="{Binding FileSelectedCommand}" />
+
+                        <u:PathPicker Title="保存文件"
+                                      UsePickerType="SaveFile"
+                                      SuggestedFileName="untitled.txt"
+                                      SelectedPathsText="{Binding SaveFilePath, Mode=OneWayToSource}"
+                                      Command="{Binding FileSelectedCommand}" />
+
+                        <u:PathPicker Title="选择文件夹"
+                                      UsePickerType="OpenFolder"
+                                      SelectedPathsText="{Binding FolderPath, Mode=OneWayToSource}"
+                                      Command="{Binding FileSelectedCommand}" />
+
+                        <TextBlock Text="{Binding FileDialogResultText}"
+                                   FontSize="14" Foreground="#BA68C8"
                                    TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
