@@ -340,13 +340,18 @@ namespace JLeb.Estragonia;
 			_gdWindow.WindowInput -= OnWindowInput;
 			_gdWindow.FilesDropped -= OnFilesDropped;
 			if (_gdWindow.IsInsideTree()) {
-				// Hide first to stop Godot from pushing input events to
-				// a window that's about to be removed from the scene tree.
-				// Without this, _push_unhandled_input_internal fires after
-				// RemoveChild/QueueFree with !is_inside_tree() error.
+				// Hide immediately to stop visual updates.
+				// Defer RemoveChild + QueueFree to end of frame to avoid
+				// _push_unhandled_input_internal !is_inside_tree() error:
+				// Dispose is called during input processing (close button click),
+				// and Godot's input pipeline still holds a reference to this
+				// viewport. Immediate RemoveChild causes the engine to push
+				// unhandled input to a node no longer in the tree.
 				_gdWindow.Visible = false;
-				_gdWindow.GetParent()?.RemoveChild(_gdWindow);
-				_gdWindow.QueueFree();
+				var parent = _gdWindow.GetParent();
+				if (parent != null)
+					parent.CallDeferred(Godot.Node.MethodName.RemoveChild, _gdWindow);
+				_gdWindow.CallDeferred(Godot.Node.MethodName.QueueFree);
 			}
 		}
 		_topLevelImpl.Dispose();
