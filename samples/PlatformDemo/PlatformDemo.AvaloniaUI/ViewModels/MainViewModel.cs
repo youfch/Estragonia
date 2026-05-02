@@ -146,15 +146,20 @@ public partial class MainViewModel : ViewModelBase {
 	}
 
 	private static Window? GetOwnerWindow() {
-		if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) {
+		var lifetime = Application.Current?.ApplicationLifetime;
+		if (lifetime is IClassicDesktopStyleApplicationLifetime desktop) {
+			System.Diagnostics.Debug.WriteLine($"[PlatformDemo] GetOwnerWindow: Windows.Count={desktop.Windows.Count}, MainWindow={desktop.MainWindow?.Title ?? "null"}");
 			// First try MainWindow (traditional desktop)
 			if (desktop.MainWindow is { IsVisible: true } mainWindow)
 				return mainWindow;
 			// In Godot mode, MainWindow may be null. Find any visible window.
 			foreach (var w in desktop.Windows) {
+				System.Diagnostics.Debug.WriteLine($"[PlatformDemo]   checking window: {w.Title}, IsVisible={w.IsVisible}");
 				if (w.IsVisible)
 					return w;
 			}
+		} else {
+			System.Diagnostics.Debug.WriteLine($"[PlatformDemo] GetOwnerWindow: lifetime is {lifetime?.GetType().Name ?? "null"}");
 		}
 		return null;
 	}

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Interactivity;
+using Godot;
+using AvWindow = Avalonia.Controls.Window;
 
 namespace JLeb.Estragonia;
 
@@ -12,16 +14,16 @@ namespace JLeb.Estragonia;
 /// </summary>
 internal sealed class GodotApplicationLifetime : IClassicDesktopStyleApplicationLifetime, IDisposable {
 
-	private readonly List<Window> _windows = new();
+	private readonly List<AvWindow> _windows = new();
 	private IDisposable? _eventSubscription;
 
 	public string[]? Args { get; set; }
 
 	public ShutdownMode ShutdownMode { get; set; }
 
-	public Window? MainWindow { get; set; }
+	public AvWindow? MainWindow { get; set; }
 
-	public IReadOnlyList<Window> Windows => _windows;
+	public IReadOnlyList<AvWindow> Windows => _windows;
 
 	public event EventHandler<ControlledApplicationLifetimeStartupEventArgs>? Startup;
 	public event EventHandler<ShutdownRequestedEventArgs>? ShutdownRequested;
@@ -32,18 +34,24 @@ internal sealed class GodotApplicationLifetime : IClassicDesktopStyleApplication
 	/// Must be called before any windows are created.
 	/// </summary>
 	public void Initialize() {
-		var openedSubscription = Window.WindowOpenedEvent.AddClassHandler(
-			typeof(Window),
+		GD.Print("[Estragonia] GodotApplicationLifetime.Initialize() — registering window trackers");
+
+		var openedSubscription = AvWindow.WindowOpenedEvent.AddClassHandler(
+			typeof(AvWindow),
 			(sender, _) => {
-				if (sender is Window window && !_windows.Contains(window))
+				if (sender is AvWindow window && !_windows.Contains(window)) {
 					_windows.Add(window);
+					GD.Print($"[Estragonia] Window opened: {window.Title} (total: {_windows.Count})");
+				}
 			});
 
-		var closedSubscription = Window.WindowClosedEvent.AddClassHandler(
-			typeof(Window),
+		var closedSubscription = AvWindow.WindowClosedEvent.AddClassHandler(
+			typeof(AvWindow),
 			(sender, _) => {
-				if (sender is Window window)
+				if (sender is AvWindow window) {
 					_windows.Remove(window);
+					GD.Print($"[Estragonia] Window closed: {window.Title} (total: {_windows.Count})");
+				}
 			});
 
 		_eventSubscription = new CombinedDisposable(openedSubscription, closedSubscription);
