@@ -10,6 +10,6 @@ public partial class AvaloniaLoader : Node {
 		=> AppBuilder
 			.Configure<AvaloniaUI.App>()
 			.UseGodot()
-			.SetupWithoutStarting();
+			.SetupWithGodot();
 
 }

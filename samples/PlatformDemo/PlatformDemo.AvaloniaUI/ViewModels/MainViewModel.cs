@@ -107,37 +107,45 @@ public partial class MainViewModel : ViewModelBase {
 	}
 
 	/// <summary>
-	/// Shows a real Avalonia modal dialog using IWindowImpl.
-	/// Note: ShowDialog requires an owner Window, which doesn't exist in Godot embedded mode.
-	/// This will likely fail until owner window support is implemented.
+	/// Shows a real Avalonia dialog using IWindowImpl.
+	/// Uses ShowDialog (Avalonia modal) when an owner window is available.
+	/// Otherwise uses Show — the library detects dialog intent (CanResize=false)
+	/// and configures Godot's Transient + Exclusive for modal behavior to the
+	/// main Godot window.
 	/// </summary>
 	[RelayCommand]
 	private async Task ShowRealDialogAsync() {
 		try {
-			// In Godot embedded mode, we don't have an owner Window (IClassicDesktopStyleApplicationLifetime).
-			// ShowDialog requires an owner. This tests the IWindowImpl path.
-			var owner = GetOwnerWindow();
-			if (owner is null) {
-				RealWindowResultText = "ShowDialog requires an owner Window — not available in Godot embedded mode. Use Show() instead.";
-				return;
-			}
-
 			Window? dialog = null;
 			dialog = new Window {
-				Title = "Real Avalonia Dialog",
+				Title = "Avalonia Dialog",
 				Width = 420,
 				Height = 280,
-				WindowStartupLocation = WindowStartupLocation.CenterOwner,
 				CanResize = false,
 				Background = new SolidColorBrush(Color.Parse("#2D2D2D")),
 				Content = BuildRealWindowContent(
-					"Modal Dialog",
-					"This is a modal Avalonia dialog.\nOwner window is disabled until this closes.",
+					"Avalonia Dialog",
+					"This is a modal Avalonia dialog.\n" +
+					"The main window is blocked until this closes.",
 					closeCallback: () => dialog!.Close()
 				)
 			};
 
-			await dialog.ShowDialog(owner);
+			var owner = GetOwnerWindow();
+			if (owner is not null) {
+				dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+				await dialog.ShowDialog(owner);
+			} else {
+				// No owner window available (e.g., Godot embedded mode where
+				// the main content lives in a GodotTopLevel, not a Window).
+				// Use TaskCompletionSource to keep this async method suspended
+				// until the dialog closes, so AsyncRelayCommand stays "running"
+				// and the button remains disabled via CanExecute.
+				var tcs = new TaskCompletionSource();
+				dialog.Closed += (_, _) => tcs.TrySetResult();
+				dialog.Show();
+				await tcs.Task;
+			}
 			RealWindowResultText = "Dialog closed.";
 		}
 		catch (Exception ex) {
@@ -146,8 +154,16 @@ public partial class MainViewModel : ViewModelBase {
 	}
 
 	private static Window? GetOwnerWindow() {
-		if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-			return desktop.MainWindow;
+		if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) {
+			// First try MainWindow (traditional desktop)
+			if (desktop.MainWindow is { IsVisible: true } mainWindow)
+				return mainWindow;
+			// In Godot mode, MainWindow may be null. Find any visible window.
+			foreach (var w in desktop.Windows) {
+				if (w.IsVisible)
+					return w;
+			}
+		}
 		return null;
 	}
 
