@@ -25,7 +25,10 @@ After following the steps below, you should have a project structure similar to 
 5. Either remove the auto-generated `_Ready` and `_Process` overrides or ensure the base method is called (otherwise the Avalonia control won't be rendered).
 6. As with a normal Avalonia project, Estragonia needs an `Avalonia.Application`-derived class.   
    Create the `App` type in XAML (or C#), and ensure it has a `FluentTheme` style.
-7. Initialize Avalonia using `AppBuilder.Configure<App>().UseGodot().SetupWithoutStarting()`.  
+7. Initialize Avalonia using `AppBuilder.Configure<App>().UseGodot()` followed by one of the two setup methods:  
+   - **`SetupWithoutStarting()`** — the default choice for embedded UI. No `IApplicationLifetime` is registered, so `Application.Current.ApplicationLifetime` returns `null`. This means your `App.OnFrameworkInitializationCompleted()` won't enter any desktop or single-view branch, which is exactly what you want when rendering solely via `AvaloniaControl`.  
+   - **`SetupWithGodot()`** — registers an `IClassicDesktopStyleApplicationLifetime`, enabling `Window.ShowDialog()` support (which requires an owner window). However, this also means `OnFrameworkInitializationCompleted()` will match the `IClassicDesktopStyleApplicationLifetime` branch — if your App creates a Window there (e.g. a splash screen or main window), an extra native Godot window will appear alongside your embedded `AvaloniaControl`. Use this method only if you need `ShowDialog()` or desktop-style window management, and make sure your `App` logic accounts for the Godot environment.  
+   
    While this can be called inside the `UserInterface._Ready` method, it will only work for a single control as the application must be initialized only once. If you plan to have several `AvaloniaControl` instances, we recommend to use a Godot [autoload script](https://docs.godotengine.org/en/stable/tutorials/scripting/singletons_autoload.html) or a C# singleton, which is what is done in the sample in the `AvaloniaLoader` class.
 8. Create a new Avalonia view: it's recommended to inherit from `UserControl`. In this example, name it `HelloWorldView.axaml`.
 9. Populate your view with Avalonia controls as you would do in a standard Avalonia application.  
