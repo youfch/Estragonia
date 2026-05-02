@@ -33,6 +33,7 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 	private WindowState _windowState = WindowState.Normal;
 	private bool _isVisible;
 	private Vector2I _pendingSize = new(400, 300);
+	private GodotWindowImpl? _parentImpl;
 
 	public Action<Rect>? Paint { get; set; }
 	public Action<Size, WindowResizeReason>? Resized { get; set; }
@@ -121,7 +122,16 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 		var sceneTree = (SceneTree)Engine.GetMainLoop();
 
 		sceneTree.Root.GuiEmbedSubwindows = false;
-		sceneTree.Root.AddChild(_gdWindow);
+
+		// For modal dialogs: add as child of the parent window and use
+		// Godot's Exclusive + Transient to block input to the parent.
+		if (isDialog && _parentImpl is not null && GodotObject.IsInstanceValid(_parentImpl._gdWindow)) {
+			_parentImpl._gdWindow.AddChild(_gdWindow);
+			_gdWindow.Transient = true;
+			_gdWindow.Exclusive = true;
+		} else {
+			sceneTree.Root.AddChild(_gdWindow);
+		}
 
 		// Apply pending size AFTER AddChild so the window is registered
 		// in DisplayServer before OnSizeChanged fires.
@@ -144,7 +154,7 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 	public void Activate() => _gdWindow.GrabFocus();
 	public void SetTopmost(bool value) { }
 	public void SetTitle(string? title) => _gdWindow.Title = title ?? string.Empty;
-	public void SetParent(IWindowImpl? parent) { }
+	public void SetParent(IWindowImpl? parent) => _parentImpl = parent as GodotWindowImpl;
 	public void SetEnabled(bool enable) => _hostControl.SetEnabled(enable);
 	public void SetWindowDecorations(WindowDecorations enabled) => _gdWindow.Borderless = enabled == WindowDecorations.None;
 	public void SetIcon(IWindowIconImpl? icon) { }
