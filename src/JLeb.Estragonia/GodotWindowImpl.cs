@@ -41,7 +41,13 @@ namespace JLeb.Estragonia;
 		// (user resize, maximize) vs Avalonia-driven changes (SizeToContent layout).
 		// This prevents feedback loops where SetRenderSize → Resized → layout → Resize
 		// causes the window to grow each frame.
-		private PixelSize _lastProcessRenderSize;
+		// Initialized to (-1,-1) so that _Process always pushes the first real size
+		// (even if the window starts at 0x0 or matches the default PixelSize).
+		private PixelSize _lastProcessRenderSize = new(-1, -1);
+
+		// For SizeToContent windows, we need to re-center after the first layout pass
+		// determines the actual content size (which differs from the initial 400×300).
+		private bool _needsRecenter;
 
 	public Action<Rect>? Paint { get; set; }
 	public Action<Size, WindowResizeReason>? Resized { get; set; }
@@ -170,7 +176,13 @@ namespace JLeb.Estragonia;
 		_gdWindow.CallDeferred(Godot.Window.MethodName.SetPosition, centerPos);
 
 		var size = _gdWindow.Size;
-		_topLevelImpl.SetRenderSize(new PixelSize(Math.Max((int)size.X, 1), Math.Max((int)size.Y, 1)), 1.0);
+		_lastProcessRenderSize = new PixelSize(Math.Max((int)size.X, 1), Math.Max((int)size.Y, 1));
+		_topLevelImpl.SetRenderSize(_lastProcessRenderSize, 1.0);
+		// For SizeToContent windows (e.g. managed file dialogs), the initial 400×300
+		// will be replaced by Avalonia's layout-determined size on the first _Process tick.
+		// Flag that we need to re-center after that happens.
+		if (_isManagedDialog)
+			_needsRecenter = true;
 		_gdWindow.Visible = true;
 		_isVisible = true;
 		if (activate) _gdWindow.GrabFocus();
@@ -198,10 +210,18 @@ namespace JLeb.Estragonia;
 
 	public void Resize(Size clientSize, WindowResizeReason reason = WindowResizeReason.Application) {
 		var pixelSize = new Vector2I(Math.Max((int)clientSize.Width, 1), Math.Max((int)clientSize.Height, 1));
+		var pxSize = new PixelSize(pixelSize.X, pixelSize.Y);
 		_pendingSize = pixelSize;
 		if (_isVisible && _gdWindow.IsInsideTree())
 			_gdWindow.Size = pixelSize;
-		_topLevelImpl.SetRenderSize(new PixelSize(pixelSize.X, pixelSize.Y), 1.0);
+		// Record the size so _Process doesn't re-push it back to Avalonia,
+		// which would cause a feedback loop with SizeToContent windows.
+		_lastProcessRenderSize = pxSize;
+		// Update the render surface to match the new size.
+		// Do NOT use _topLevelImpl.SetRenderSize here — that fires Resized which
+		// triggers Avalonia layout which calls Resize() again, causing Y-axis growth
+		// with SizeToContent windows on repeated dialog opens.
+		_topLevelImpl.UpdateClientSize(pxSize, 1.0);
 	}
 
 	public void Move(PixelPoint point) {
@@ -317,8 +337,6 @@ namespace JLeb.Estragonia;
 		public override void _Ready() {
 			if (Engine.IsEditorHint()) return;
 			Material = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.PremultAlpha, LightMode = CanvasItemMaterial.LightModeEnum.Unshaded };
-			var window = GetWindow();
-			if (window != null) { var size = window.Size; _owner._topLevelImpl.SetRenderSize(new PixelSize(Math.Max((int)size.X, 1), Math.Max((int)size.Y, 1)), 1.0); }
 		}
 
 		public override void _Process(double delta) {
@@ -343,6 +361,22 @@ namespace JLeb.Estragonia;
 				// Without this, maximize/fullscreen shows a blurry texture because
 				// OnDraw renders with the old layout onto the new surface.
 				AvDispatcher.UIThread.RunJobs();
+			}
+
+			// For SizeToContent windows, re-center after Avalonia layout determines
+			// the actual content size (which differs from the initial 400×300 default).
+			if (_owner._needsRecenter) {
+				_owner._needsRecenter = false;
+				var sceneTree = (SceneTree)Engine.GetMainLoop();
+				var mainWinId = sceneTree.Root.GetWindowId();
+				var mainWinPos = DisplayServer.WindowGetPosition(mainWinId);
+				var mainWinSize = sceneTree.Root.Size;
+				var subWinSize = window.Size;
+				var centerPos = new Vector2I(
+					mainWinPos.X + Math.Max((mainWinSize.X - subWinSize.X) / 2, 0),
+					mainWinPos.Y + Math.Max((mainWinSize.Y - subWinSize.Y) / 2, 0)
+				);
+				window.CallDeferred(Godot.Window.MethodName.SetPosition, centerPos);
 			}
 
 			_owner._topLevelImpl.OnDraw(new Rect(pixelSize.ToSize(1.0)));
