@@ -37,7 +37,6 @@ namespace JLeb.Estragonia;
 		private Vector2I _pendingSize = new(400, 300);
 		private GodotWindowImpl? _parentImpl;
 		private readonly bool _isManagedDialog;
-		private bool _osdDragHovering;
 
 		// Tracks the last PixelSize pushed from _Process to detect external size changes
 		// (user resize, maximize) vs Avalonia-driven changes (SizeToContent layout).
@@ -307,20 +306,8 @@ namespace JLeb.Estragonia;
 	private void OnWindowInput(InputEvent @event) {
 		if (_isDisposed) return;
 
-		// Detect OS file drag-and-drop hover: mouse motion without buttons
-		if (@event is InputEventMouseMotion motion) {
-			if (!_osdDragHovering && motion.ButtonMask == 0) {
-				if (_topLevelImpl.OnOsdDragEnter(motion.Position, Time.GetTicksMsec()))
-					_osdDragHovering = true;
-			} else if (_osdDragHovering) {
-				_topLevelImpl.OnOsdDragOver(motion.Position, Time.GetTicksMsec());
-			}
-
-			_topLevelImpl.OnMouseMotion(motion, Time.GetTicksMsec());
-			return;
-		}
-
 		_ = @event switch {
+			InputEventMouseMotion motion => _topLevelImpl.OnMouseMotion(motion, Time.GetTicksMsec()),
 			InputEventMouseButton button => _topLevelImpl.OnMouseButton(button, Time.GetTicksMsec()),
 			InputEventScreenTouch st => _topLevelImpl.OnScreenTouch(st, Time.GetTicksMsec()),
 			InputEventScreenDrag sd => _topLevelImpl.OnScreenDrag(sd, Time.GetTicksMsec()),
@@ -334,8 +321,6 @@ namespace JLeb.Estragonia;
 	private void OnFilesDropped(string[] files) {
 		if (_isDisposed || files.Length == 0)
 			return;
-
-		_osdDragHovering = false;
 
 		// Get mouse position relative to the window content area
 		var mousePos = _gdWindow.GetMousePosition();

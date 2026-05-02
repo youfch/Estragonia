@@ -34,13 +34,6 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 	private bool _isDisposed;
 	private int _lastMouseDeviceId = GodotDevices.EmulatedDeviceId;
 
-	/// <summary>
-	/// Tracks whether an OS file drag session is in progress.
-	/// Set by AvaloniaControl/GodotWindowImpl when mouse motion without buttons
-	/// is detected (heuristic for OS file drag-and-drop).
-	/// </summary>
-	private bool _isOsdDragActive;
-
 	public double RenderScaling { get; private set; } = 1.0;
 
 	double ITopLevelImpl.DesktopScaling
@@ -407,90 +400,6 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 	}
 
 	/// <summary>
-	/// Begins an OS drag-and-drop session.
-	/// Called when mouse motion without buttons is detected (heuristic for OS file drag).
-	/// Synthesizes a DragEnter event for Avalonia.
-	/// </summary>
-	public bool OnOsdDragEnter(Vector2 position, ulong timestamp) {
-		if (_inputRoot is null || Input is not { } input)
-			return false;
-
-		_isOsdDragActive = true;
-
-		var dragDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
-		var point = position.ToAvaloniaPoint() / RenderScaling;
-		var modifiers = InputModifiersProvider.GetRawInputModifiers();
-
-		// Use a placeholder DataTransfer that signals File format availability
-		// but contains no actual items until the drop
-		var dataTransfer = CreateOsdPlaceholderTransfer();
-
-		GD.Print($"[OSD] OnOsdDragEnter: point={point}, hasInputRoot={_inputRoot != null}");
-
-		var args = new RawDragEvent(dragDevice, RawDragEventType.DragEnter, _inputRoot, point, dataTransfer, DragDropEffects.Copy | DragDropEffects.Link, modifiers);
-		input(args);
-
-		GD.Print($"[OSD] OnOsdDragEnter result: Handled={args.Handled}, Effects={args.Effects}");
-		return args.Handled;
-	}
-
-	/// <summary>
-	/// Continues an OS drag-and-drop session.
-	/// Called on mouse motion while the OS drag session is active.
-	/// Synthesizes a DragOver event for Avalonia.
-	/// </summary>
-	public bool OnOsdDragOver(Vector2 position, ulong timestamp) {
-		if (!_isOsdDragActive || _inputRoot is null || Input is not { } input)
-			return false;
-
-		var dragDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
-		var point = position.ToAvaloniaPoint() / RenderScaling;
-		var modifiers = InputModifiersProvider.GetRawInputModifiers();
-
-		var dataTransfer = CreateOsdPlaceholderTransfer();
-
-		var args = new RawDragEvent(dragDevice, RawDragEventType.DragOver, _inputRoot, point, dataTransfer, DragDropEffects.Copy | DragDropEffects.Link, modifiers);
-		input(args);
-
-		return args.Handled;
-	}
-
-	/// <summary>
-	/// Ends an OS drag-and-drop session without a drop (mouse left the control).
-	/// Synthesizes a DragLeave event for Avalonia.
-	/// </summary>
-	public void OnOsdDragLeave() {
-		if (!_isOsdDragActive || _inputRoot is null || Input is not { } input)
-			return;
-
-		_isOsdDragActive = false;
-
-		var dragDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
-		var modifiers = InputModifiersProvider.GetRawInputModifiers();
-
-		var dataTransfer = CreateOsdPlaceholderTransfer();
-
-		var args = new RawDragEvent(dragDevice, RawDragEventType.DragLeave, _inputRoot, new Point(-1, -1), dataTransfer, DragDropEffects.None, modifiers);
-		input(args);
-	}
-
-	/// <summary>
-	/// Creates a placeholder DataTransfer that advertises File format
-	/// but carries no actual file data. Used during hover phase of OS
-	/// drag-and-drop when file paths aren't yet available from Godot.
-	/// </summary>
-	private static DataTransfer CreateOsdPlaceholderTransfer() {
-		var dataTransfer = new DataTransfer();
-		// Create a dummy IStorageItem so DataFormat.File is registered.
-		// SetFile(null) would remove the format entirely via RemoveCore.
-		// We use a non-existent path — the item is never actually accessed
-		// during hover; it only needs to advertise that File format is available.
-		var dummyItem = new BclStorageFile(new FileInfo("_osd_drag_placeholder"));
-		dataTransfer.Add(DataTransferItem.CreateFile(dummyItem));
-		return dataTransfer;
-	}
-
-	/// <summary>
 	/// Handles files dropped from the OS onto the Godot window.
 	/// First sends DragLeave to end any hover session, then
 	/// synthesizes DragEnter → DragOver → Drop with real file data.
@@ -498,16 +407,6 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 	public bool OnFilesDropped(string[] files, Vector2 position, ulong timestamp) {
 		if (_inputRoot is null || Input is not { } input)
 			return false;
-
-		// End the hover session if one was active
-		if (_isOsdDragActive) {
-			_isOsdDragActive = false;
-			// Send DragLeave to clean up hover state before sending Drop
-			var dragDevice = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
-			var leaveDataTransfer = CreateOsdPlaceholderTransfer();
-			var leaveArgs = new RawDragEvent(dragDevice, RawDragEventType.DragLeave, _inputRoot, position.ToAvaloniaPoint() / RenderScaling, leaveDataTransfer, DragDropEffects.None, InputModifiersProvider.GetRawInputModifiers());
-			input(leaveArgs);
-		}
 
 		var point = position.ToAvaloniaPoint() / RenderScaling;
 		var modifiers = InputModifiersProvider.GetRawInputModifiers();
