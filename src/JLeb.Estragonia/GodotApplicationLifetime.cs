@@ -34,24 +34,18 @@ internal sealed class GodotApplicationLifetime : IClassicDesktopStyleApplication
 	/// Must be called before any windows are created.
 	/// </summary>
 	public void Initialize() {
-		GD.Print("[Estragonia] GodotApplicationLifetime.Initialize() — registering window trackers");
-
 		var openedSubscription = AvWindow.WindowOpenedEvent.AddClassHandler(
 			typeof(AvWindow),
 			(sender, _) => {
-				if (sender is AvWindow window && !_windows.Contains(window)) {
+				if (sender is AvWindow window && !_windows.Contains(window))
 					_windows.Add(window);
-					GD.Print($"[Estragonia] Window opened: {window.Title} (total: {_windows.Count})");
-				}
 			});
 
 		var closedSubscription = AvWindow.WindowClosedEvent.AddClassHandler(
 			typeof(AvWindow),
 			(sender, _) => {
-				if (sender is AvWindow window) {
+				if (sender is AvWindow window)
 					_windows.Remove(window);
-					GD.Print($"[Estragonia] Window closed: {window.Title} (total: {_windows.Count})");
-				}
 			});
 
 		_eventSubscription = new CombinedDisposable(openedSubscription, closedSubscription);

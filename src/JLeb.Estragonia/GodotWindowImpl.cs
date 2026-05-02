@@ -32,6 +32,7 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 	private bool _isDisposed;
 	private WindowState _windowState = WindowState.Normal;
 	private bool _isVisible;
+	private bool _unresizable;
 	private Vector2I _pendingSize = new(400, 300);
 	private GodotWindowImpl? _parentImpl;
 
@@ -123,14 +124,21 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 
 		sceneTree.Root.GuiEmbedSubwindows = false;
 
-		// For modal dialogs: add as child of the parent window and use
-		// Godot's Exclusive + Transient to block input to the parent.
-		if (isDialog && _parentImpl is not null && GodotObject.IsInstanceValid(_parentImpl._gdWindow)) {
-			_parentImpl._gdWindow.AddChild(_gdWindow);
+		// Determine if this window should be modal (block input to parent).
+		// isDialog is set by Avalonia's ShowDialog(), but we also detect
+		// dialog intent via CanResize=false (set before Show() for dialogs).
+		var modal = isDialog || (_unresizable && _parentImpl is null);
+
+		// Always add sub-windows as siblings under the root viewport.
+		// Godot's Transient + Exclusive provides modal semantics via window IDs,
+		// not node hierarchy — nesting creates incorrect scene tree structure.
+		sceneTree.Root.AddChild(_gdWindow);
+
+		// Transient: stays on top of parent, focus returns on close
+		// Exclusive: blocks ALL input to parent (Godot modal mechanism)
+		if (modal) {
 			_gdWindow.Transient = true;
 			_gdWindow.Exclusive = true;
-		} else {
-			sceneTree.Root.AddChild(_gdWindow);
 		}
 
 		// Apply pending size AFTER AddChild so the window is registered
@@ -159,7 +167,10 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 	public void SetWindowDecorations(WindowDecorations enabled) => _gdWindow.Borderless = enabled == WindowDecorations.None;
 	public void SetIcon(IWindowIconImpl? icon) { }
 	public void ShowTaskbarIcon(bool value) { }
-	public void CanResize(bool value) => _gdWindow.Unresizable = !value;
+	public void CanResize(bool value) {
+		_unresizable = !value;
+		_gdWindow.Unresizable = !value;
+	}
 	public void SetCanMinimize(bool value) { }
 	public void SetCanMaximize(bool value) { }
 
