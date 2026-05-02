@@ -107,36 +107,38 @@ public partial class MainViewModel : ViewModelBase {
 	}
 
 	/// <summary>
-	/// Shows a real Avalonia modal dialog using IWindowImpl.
-	/// Requires <see cref="IClassicDesktopStyleApplicationLifetime"/> to be registered
-	/// so that <see cref="GetOwnerWindow"/> can find an owner window.
+	/// Shows a real Avalonia dialog using IWindowImpl.
+	/// Uses ShowDialog (modal) when an owner window is available,
+	/// otherwise falls back to Show (non-modal).
 	/// </summary>
 	[RelayCommand]
 	private async Task ShowRealDialogAsync() {
 		try {
-			var owner = GetOwnerWindow();
-			if (owner is null) {
-				RealWindowResultText = "ShowDialog requires an owner Window — click 'Show Window' first to create one.";
-				return;
-			}
-
 			Window? dialog = null;
 			dialog = new Window {
-				Title = "Real Avalonia Dialog",
+				Title = "Avalonia Dialog",
 				Width = 420,
 				Height = 280,
-				WindowStartupLocation = WindowStartupLocation.CenterOwner,
-				CanResize = false,
 				Background = new SolidColorBrush(Color.Parse("#2D2D2D")),
 				Content = BuildRealWindowContent(
-					"Modal Dialog",
-					"This is a modal Avalonia dialog.\nOwner window is disabled until this closes.",
+					"Avalonia Dialog",
+					"This is an Avalonia dialog created via IWindowImpl.\n" +
+					"It renders as a Godot sub-window with OS decorations.",
 					closeCallback: () => dialog!.Close()
 				)
 			};
 
-			await dialog.ShowDialog(owner);
-			RealWindowResultText = "Dialog closed.";
+			var owner = GetOwnerWindow();
+			if (owner is not null) {
+				dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
+				dialog.CanResize = false;
+				await dialog.ShowDialog(owner);
+				RealWindowResultText = "Dialog closed (was modal).";
+			} else {
+				// No owner window available — show as non-modal
+				dialog.Show();
+				RealWindowResultText = "Dialog shown (non-modal, no owner window).";
+			}
 		}
 		catch (Exception ex) {
 			RealWindowResultText = $"Error: {ex.Message}";
