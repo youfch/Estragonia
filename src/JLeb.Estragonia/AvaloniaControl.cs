@@ -177,30 +177,13 @@ public class AvaloniaControl : GdControl {
 		}
 	}
 
-	// Debug counters
-	private static int _debugOverlayFrames;
-	private static int _debugDrawFrames;
-
 	private void RenderOverlayWindows() {
 		foreach (var window in OverlayWindowManager.Windows) {
 			if (!window.IsVisible || window.IsDisposed)
 				continue;
 
 			var size = window.OverlaySize;
-
-			if (_debugOverlayFrames < 15) {
-				_debugOverlayFrames++;
-				var surf = window.TopLevelImpl.TryGetSurface();
-				GD.Print($"[RenderOverlayWindows] size=({size.X},{size.Y}) Paint={window.TopLevelImpl.Paint != null} Surface={surf != null} DrawCount={surf?.DrawCount ?? 0}");
-			}
-
 			window.TopLevelImpl.OnDraw(new Rect(new Size(size.X, size.Y)));
-
-			// Check DrawCount AFTER Paint to see if Skia actually rendered
-			if (_debugOverlayFrames <= 15) {
-				var surf2 = window.TopLevelImpl.TryGetSurface();
-				GD.Print($"[RenderOverlayWindows POST] DrawCount={surf2?.DrawCount ?? 0}");
-			}
 		}
 	}
 
@@ -262,18 +245,7 @@ public class AvaloniaControl : GdControl {
 				continue;
 
 			var pos = window.OverlayPosition;
-			var size = window.OverlaySize;
-
-			// Debug: draw a bright magenta rectangle to verify position
-			DrawRect(new Rect2(pos.X, pos.Y, size.X, size.Y), new Color(1.0f, 0.0f, 1.0f, 0.3f));
-
 			var surface = window.TopLevelImpl.TryGetSurface();
-			if (_debugDrawFrames < 10) {
-				_debugDrawFrames++;
-				var texW = surface?.GdTexture?.GetWidth() ?? 0;
-				var texH = surface?.GdTexture?.GetHeight() ?? 0;
-				GD.Print($"[DrawOverlayWindows] pos=({pos.X},{pos.Y}) size=({size.X},{size.Y}) texSize=({texW},{texH})");
-			}
 
 			if (surface?.GdTexture != null) {
 				DrawTexture(surface.GdTexture, new Vector2(pos.X, pos.Y));
@@ -298,15 +270,33 @@ public class AvaloniaControl : GdControl {
 	private bool TryForwardToOverlayWindow(InputEvent @event) {
 		var timestamp = Time.GetTicksMsec();
 
-		// For mouse events, hit test against overlay windows
+		// Check for an active drag operation — forward motion to dragging window
+		// even if the mouse has moved outside the window bounds.
 		if (@event is InputEventMouseMotion mm) {
-			// During drag/resize, continue forwarding to the active window
+			var draggingWindow = GetDraggingOverlayWindow();
+			if (draggingWindow != null) {
+				draggingWindow.ProcessDragMotion(mm.Position);
+				// Also forward the motion to Avalonia so hover states update
+				draggingWindow.ProcessMouseMotion(mm, timestamp);
+				return true;
+			}
+
 			var hitWindow = OverlayWindowManager.HitTest(mm.Position);
 			if (hitWindow != null)
 				return hitWindow.ProcessMouseMotion(mm, timestamp);
 		}
 
 		if (@event is InputEventMouseButton mb) {
+			// On left button release, end any active drag
+			if (!mb.Pressed && mb.ButtonIndex == Godot.MouseButton.Left) {
+				var draggingWindow = GetDraggingOverlayWindow();
+				if (draggingWindow != null) {
+					draggingWindow.EndDrag();
+					// Still forward the release event to the window
+					return draggingWindow.ProcessMouseButton(mb, timestamp);
+				}
+			}
+
 			var hitWindow = OverlayWindowManager.HitTest(mb.Position);
 			if (hitWindow != null) {
 				OverlayWindowManager.BringToFront(hitWindow);
@@ -331,6 +321,15 @@ public class AvaloniaControl : GdControl {
 			return hitWin.ProcessGenericInput(@event, timestamp);
 
 		return false;
+	}
+
+	private static GodotOverlayWindowImpl? GetDraggingOverlayWindow() {
+		var windows = OverlayWindowManager.Windows;
+		for (var i = windows.Count - 1; i >= 0; i--) {
+			if (windows[i].IsDragging)
+				return windows[i];
+		}
+		return null;
 	}
 
 	private static GodotOverlayWindowImpl? GetTopOverlayWindow() {

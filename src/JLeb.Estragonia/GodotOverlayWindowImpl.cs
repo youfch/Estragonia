@@ -26,12 +26,14 @@ internal sealed class GodotOverlayWindowImpl : IWindowImpl {
 
 	private bool _isDisposed;
 	private bool _isVisible;
+	private bool _isDragging;
 	private WindowState _windowState = WindowState.Normal;
 	private Vector2I _position;
 	private Vector2I _size = new(400, 300);
+	private Vector2 _dragStartMousePos;
+	private Vector2I _dragStartWindowPos;
 	private Size _minSize;
 	private Size _maxSize;
-	private int _debugPaintCount;
 
 	// ITopLevelImpl events — forwarded from _topLevelImpl
 	public Action<Rect>? Paint { get; set; }
@@ -84,6 +86,7 @@ internal sealed class GodotOverlayWindowImpl : IWindowImpl {
 	public Vector2I OverlaySize => _size;
 	public bool IsVisible => _isVisible;
 	public bool IsDisposed => _isDisposed;
+	public bool IsDragging => _isDragging;
 	internal GodotTopLevelImpl TopLevelImpl => _topLevelImpl;
 
 	// IWindowImpl properties
@@ -101,6 +104,7 @@ internal sealed class GodotOverlayWindowImpl : IWindowImpl {
 	public PlatformRequestedDrawnDecoration RequestedDrawnDecorations
 		=> PlatformRequestedDrawnDecoration.TitleBar
 			| PlatformRequestedDrawnDecoration.Border
+			| PlatformRequestedDrawnDecoration.Shadow
 			| PlatformRequestedDrawnDecoration.ResizeGrips;
 
 	public Thickness ExtendedMargins => default;
@@ -119,13 +123,7 @@ internal sealed class GodotOverlayWindowImpl : IWindowImpl {
 		_topLevelImpl.SetRenderSize(new PixelSize(Math.Max(_size.X, 1), Math.Max(_size.Y, 1)), 1.0);
 
 		// Forward _topLevelImpl events to our own events
-		_topLevelImpl.Paint = rect => {
-			if (_debugPaintCount < 5) {
-				_debugPaintCount++;
-				GD.Print($"[Overlay._topLevelImpl.Paint] rect={rect} ourPaint={Paint != null}");
-			}
-			Paint?.Invoke(rect);
-		};
+		_topLevelImpl.Paint = rect => Paint?.Invoke(rect);
 		_topLevelImpl.Resized = (size, reason) => Resized?.Invoke(size, reason);
 		_topLevelImpl.Input = args => Input?.Invoke(args);
 		_topLevelImpl.LostFocus = () => LostFocus?.Invoke();
@@ -152,8 +150,6 @@ internal sealed class GodotOverlayWindowImpl : IWindowImpl {
 				Math.Max((int)((hostSize.Y - _size.Y) / 2), 0)
 			);
 		}
-
-		GD.Print($"[GodotOverlayWindowImpl.Show] size=({_size.X},{_size.Y}) pos=({_position.X},{_position.Y}) host={host != null} windows={OverlayWindowManager.Windows.Count}");
 
 		// Set initial render size
 		_topLevelImpl.SetRenderSize(
@@ -207,11 +203,44 @@ internal sealed class GodotOverlayWindowImpl : IWindowImpl {
 	public void SetCanMaximize(bool value) { }
 
 	public void BeginMoveDrag(PointerPressedEventArgs e) {
-		// Phase 2
+		if (_isDisposed || !_isVisible)
+			return;
+
+		// e.GetPosition(null) gives the position relative to the Window root.
+		// We need to convert to AvaloniaControl-local coordinates by adding the
+		// window's overlay position within the host.
+		var pos = e.GetPosition(null); // position relative to Window root
+		_dragStartMousePos = new Vector2(
+			_position.X + (float)pos.X,
+			_position.Y + (float)pos.Y
+		);
+		_dragStartWindowPos = _position;
+		_isDragging = true;
 	}
 
 	public void BeginResizeDrag(WindowEdge edge, PointerPressedEventArgs e) {
-		// Phase 2
+		// Phase 2 — resize drag not yet implemented
+	}
+
+	/// <summary>
+	/// Processes a mouse motion event during an active drag.
+	/// Moves the overlay window by the delta from the drag start position.
+	/// </summary>
+	internal void ProcessDragMotion(Vector2 currentMousePos) {
+		if (!_isDragging)
+			return;
+
+		var delta = currentMousePos - _dragStartMousePos;
+		_position = new Vector2I(
+			_dragStartWindowPos.X + (int)delta.X,
+			_dragStartWindowPos.Y + (int)delta.Y
+		);
+		PositionChanged?.Invoke(new PixelPoint(_position.X, _position.Y));
+	}
+
+	/// <summary>Ends an active move drag.</summary>
+	internal void EndDrag() {
+		_isDragging = false;
 	}
 
 	public void Resize(Size clientSize, WindowResizeReason reason = WindowResizeReason.Application) {
@@ -334,10 +363,9 @@ internal sealed class GodotOverlayWindowImpl : IWindowImpl {
 		if (_isDisposed)
 			return;
 
-		GD.Print($"[GodotOverlayWindowImpl.Dispose] windows={OverlayWindowManager.Windows.Count}");
-
 		_isDisposed = true;
 		_isVisible = false;
+		_isDragging = false;
 
 		OverlayWindowManager.UnregisterWindow(this);
 		_topLevelImpl.Dispose();

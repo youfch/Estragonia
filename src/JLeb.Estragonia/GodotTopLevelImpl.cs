@@ -379,12 +379,10 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 		=> null;
 
 	void ITopLevelImpl.SetTransparencyLevelHint(IReadOnlyList<WindowTransparencyLevel> transparencyLevels) {
-		foreach (var transparencyLevel in transparencyLevels) {
-			if (transparencyLevel == WindowTransparencyLevel.Transparent || transparencyLevel == WindowTransparencyLevel.None) {
-				TransparencyLevel = transparencyLevel;
-				return;
-			}
-		}
+		// Overlay windows are always composited onto the host control's texture,
+		// so we force Transparent level regardless of what Avalonia requests.
+		// This prevents PART_TransparencyFallback from showing an opaque white background.
+		TransparencyLevel = WindowTransparencyLevel.Transparent;
 	}
 
 	void ITopLevelImpl.SetFrameThemeVariant(PlatformThemeVariant themeVariant) {
