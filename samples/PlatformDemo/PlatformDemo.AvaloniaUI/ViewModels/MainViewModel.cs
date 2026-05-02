@@ -108,8 +108,10 @@ public partial class MainViewModel : ViewModelBase {
 
 	/// <summary>
 	/// Shows a real Avalonia dialog using IWindowImpl.
-	/// Uses ShowDialog (modal) when an owner window is available,
-	/// otherwise falls back to Show (non-modal).
+	/// Uses ShowDialog (Avalonia modal) when an owner window is available.
+	/// Otherwise uses Show — the library detects dialog intent (CanResize=false)
+	/// and configures Godot's Transient + Exclusive for modal behavior to the
+	/// main Godot window.
 	/// </summary>
 	[RelayCommand]
 	private async Task ShowRealDialogAsync() {
@@ -119,11 +121,12 @@ public partial class MainViewModel : ViewModelBase {
 				Title = "Avalonia Dialog",
 				Width = 420,
 				Height = 280,
+				CanResize = false,
 				Background = new SolidColorBrush(Color.Parse("#2D2D2D")),
 				Content = BuildRealWindowContent(
 					"Avalonia Dialog",
-					"This is an Avalonia dialog created via IWindowImpl.\n" +
-					"It renders as a Godot sub-window with OS decorations.",
+					"This is a modal Avalonia dialog.\n" +
+					"The main window is blocked until this closes.",
 					closeCallback: () => dialog!.Close()
 				)
 			};
@@ -131,14 +134,19 @@ public partial class MainViewModel : ViewModelBase {
 			var owner = GetOwnerWindow();
 			if (owner is not null) {
 				dialog.WindowStartupLocation = WindowStartupLocation.CenterOwner;
-				dialog.CanResize = false;
 				await dialog.ShowDialog(owner);
-				RealWindowResultText = "Dialog closed (was modal).";
 			} else {
-				// No owner window available — show as non-modal
+				// No owner window available (e.g., Godot embedded mode where
+				// the main content lives in a GodotTopLevel, not a Window).
+				// Use TaskCompletionSource to keep this async method suspended
+				// until the dialog closes, so AsyncRelayCommand stays "running"
+				// and the button remains disabled via CanExecute.
+				var tcs = new TaskCompletionSource();
+				dialog.Closed += (_, _) => tcs.TrySetResult();
 				dialog.Show();
-				RealWindowResultText = "Dialog shown (non-modal, no owner window).";
+				await tcs.Task;
 			}
+			RealWindowResultText = "Dialog closed.";
 		}
 		catch (Exception ex) {
 			RealWindowResultText = $"Error: {ex.Message}";
@@ -146,20 +154,15 @@ public partial class MainViewModel : ViewModelBase {
 	}
 
 	private static Window? GetOwnerWindow() {
-		var lifetime = Application.Current?.ApplicationLifetime;
-		if (lifetime is IClassicDesktopStyleApplicationLifetime desktop) {
-			System.Diagnostics.Debug.WriteLine($"[PlatformDemo] GetOwnerWindow: Windows.Count={desktop.Windows.Count}, MainWindow={desktop.MainWindow?.Title ?? "null"}");
+		if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) {
 			// First try MainWindow (traditional desktop)
 			if (desktop.MainWindow is { IsVisible: true } mainWindow)
 				return mainWindow;
 			// In Godot mode, MainWindow may be null. Find any visible window.
 			foreach (var w in desktop.Windows) {
-				System.Diagnostics.Debug.WriteLine($"[PlatformDemo]   checking window: {w.Title}, IsVisible={w.IsVisible}");
 				if (w.IsVisible)
 					return w;
 			}
-		} else {
-			System.Diagnostics.Debug.WriteLine($"[PlatformDemo] GetOwnerWindow: lifetime is {lifetime?.GetType().Name ?? "null"}");
 		}
 		return null;
 	}
