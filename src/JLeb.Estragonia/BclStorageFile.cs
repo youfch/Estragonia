@@ -67,12 +67,15 @@ internal sealed class BclStorageFile : IStorageBookmarkFile {
 	}
 
 	public Task<string?> SaveBookmarkAsync()
-		=> Task.FromResult<string?>(FileInfo.FullName);
+		=> FileInfo.Exists ? Task.FromResult<string?>(FileInfo.FullName) : Task.FromResult<string?>(null);
 
 	public Task ReleaseBookmarkAsync()
 		=> Task.CompletedTask;
 
 	public Task DeleteAsync() {
+		if (!FileInfo.Exists)
+			throw new FileNotFoundException($"File not found: {FileInfo.FullName}");
+
 		FileInfo.Delete();
 		return Task.CompletedTask;
 	}

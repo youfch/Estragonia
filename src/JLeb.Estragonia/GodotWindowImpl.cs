@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Input.Raw;
+using Avalonia.LogicalTree;
 using Avalonia.Platform;
 using Avalonia.Platform.Surfaces;
 using Godot;
@@ -30,6 +33,7 @@ namespace JLeb.Estragonia;
 		private readonly WindowHostControl _hostControl;
 		private readonly GodotScreenImpl _screenImpl;
 
+		private static bool s_guiEmbedSubwindowsSet;
 		private bool _isDisposed;
 		private WindowState _windowState = WindowState.Normal;
 		private bool _isVisible;
@@ -49,6 +53,7 @@ namespace JLeb.Estragonia;
 		// For SizeToContent windows, we need to re-center after the first layout pass
 		// determines the actual content size (which differs from the initial 400×300).
 		private bool _needsRecenter;
+		private bool _popupLayerEnabled;
 
 	public Action<Rect>? Paint { get; set; }
 	public Action<Size, WindowResizeReason>? Resized { get; set; }
@@ -76,7 +81,8 @@ namespace JLeb.Estragonia;
 	IPlatformRenderSurface[] ITopLevelImpl.Surfaces => ((ITopLevelImpl)_topLevelImpl).Surfaces;
 	public Size? FrameSize => null;
 	public PixelPoint Position { get; private set; }
-	public Size MaxAutoSizeHint => Size.Infinity;
+	// Finite constraint prevents Infinity propagation to PopupOverlayLayer.MeasureOverride.
+	public Size MaxAutoSizeHint { get; } = new Size(8192, 8192);
 
 	public WindowState WindowState {
 		get => _windowState;
@@ -101,12 +107,8 @@ namespace JLeb.Estragonia;
 	public Thickness OffScreenMargin => default;
 	public PlatformAllowedWindowActions AllowedWindowActions => PlatformAllowedWindowActions.All;
 
-		private static int _dialogSeq; // per-instance sequence for log correlation
-
 	public GodotWindowImpl(GodotVkPlatformGraphics platformGraphics, IClipboard clipboard, AvCompositor compositor) {
 		_isManagedDialog = GodotPlatform.IsManagedDialogWindow;
-		if (_isManagedDialog)
-			GD.Print($"[Dialog#{Interlocked.Increment(ref _dialogSeq)}] new GodotWindowImpl");
 		_topLevelImpl = new GodotTopLevelImpl(platformGraphics, clipboard, compositor);
 		_screenImpl = new GodotScreenImpl();
 		_topLevelImpl.Paint = rect => Paint?.Invoke(rect);
@@ -129,6 +131,7 @@ namespace JLeb.Estragonia;
 			MinSize = new Vector2I(100, 50),
 			Size = new Vector2I(400, 300)
 		};
+		_gdWindow.AddToGroup("avalonia_windows");
 		_hostControl = new WindowHostControl(this);
 		_gdWindow.AddChild(_hostControl);
 		_topLevelImpl.CursorChanged = cursorShape => _hostControl.SetCursor(cursorShape);
@@ -142,10 +145,12 @@ namespace JLeb.Estragonia;
 		if (_isDisposed || _isVisible) return;
 		var sceneTree = (SceneTree)Engine.GetMainLoop();
 
-		if (_isManagedDialog)
-			GD.Print($"[Dialog] Show: pendingSize={_pendingSize}, lastRender={_lastProcessRenderSize}");
-
-		sceneTree.Root.GuiEmbedSubwindows = false;
+		// Only set GuiEmbedSubwindows once — this is a global property on the
+		// root viewport that affects all Godot sub-windows, not just ours.
+		if (!s_guiEmbedSubwindowsSet) {
+			sceneTree.Root.GuiEmbedSubwindows = false;
+			s_guiEmbedSubwindowsSet = true;
+		}
 
 		// Determine if this window should be modal (block input to parent).
 		// isDialog: set by Avalonia's ShowDialog().
@@ -220,8 +225,6 @@ namespace JLeb.Estragonia;
 	public void Resize(Size clientSize, WindowResizeReason reason = WindowResizeReason.Application) {
 		var pixelSize = new Vector2I(Math.Max((int)clientSize.Width, 1), Math.Max((int)clientSize.Height, 1));
 		var pxSize = new PixelSize(pixelSize.X, pixelSize.Y);
-		if (_isManagedDialog)
-			GD.Print($"[Dialog] Resize: clientSize={clientSize}, reason={reason}, lastRender={_lastProcessRenderSize}, visible={_isVisible}");
 		_pendingSize = pixelSize;
 		if (_isVisible && _gdWindow.IsInsideTree())
 			_gdWindow.Size = pixelSize;
@@ -244,16 +247,115 @@ namespace JLeb.Estragonia;
 	public void SetExtendClientAreaToDecorationsHint(bool extendIntoClientAreaHint) { }
 	public void SetExtendClientAreaTitleBarHeightHint(double titleBarHeight) { }
 	void ITopLevelImpl.SetInputRoot(IInputRoot inputRoot) => ((ITopLevelImpl)_topLevelImpl).SetInputRoot(inputRoot);
+
 	Point ITopLevelImpl.PointToClient(PixelPoint point) => ((ITopLevelImpl)_topLevelImpl).PointToClient(point);
 	PixelPoint ITopLevelImpl.PointToScreen(Point point) => ((ITopLevelImpl)_topLevelImpl).PointToScreen(point);
 	void ITopLevelImpl.SetCursor(ICursorImpl? cursor) => ((ITopLevelImpl)_topLevelImpl).SetCursor(cursor);
-	IPopupImpl? ITopLevelImpl.CreatePopup() => null;
+	IPopupImpl? ITopLevelImpl.CreatePopup() => null; // Use OverlayPopupHost
+
 	void ITopLevelImpl.SetTransparencyLevelHint(IReadOnlyList<WindowTransparencyLevel> transparencyLevels) => ((ITopLevelImpl)_topLevelImpl).SetTransparencyLevelHint(transparencyLevels);
 	void ITopLevelImpl.SetFrameThemeVariant(PlatformThemeVariant themeVariant) { }
 
 	object? IOptionalFeatureProvider.TryGetFeature(Type featureType) {
 		if (featureType == typeof(IScreenImpl)) return _screenImpl;
 		return ((ITopLevelImpl)_topLevelImpl).TryGetFeature(featureType);
+	}
+
+	/// <summary>
+	/// Enables PopupOverlayLayer on the VisualLayerManager so that popups
+	/// (ComboBox dropdowns, context menus, tooltips) render in-window.
+	/// Called from _Process after layout completes with a valid size.
+	/// </summary>
+	/// <remarks>
+	/// This method uses reflection to access Avalonia internal APIs
+	/// (RootVisual, VisualChildren, EnablePopupOverlayLayer) because no
+	/// public API exists for this purpose. These are protected by
+	/// AvaloniaAccessUnstablePrivateApis and may break on Avalonia version upgrades.
+	/// Reflection results are cached to minimize AOT trimming risk.
+	/// </remarks>
+	private void TryEnablePopupOverlayLayer() {
+		if (_popupLayerEnabled || _isDisposed) return;
+
+		// Use the internal property instead of reflection into our own class
+		var inputRoot = _topLevelImpl.InputRoot;
+		if (inputRoot is null) return;
+
+		// RootVisual is an Avalonia internal property on PresentationSource.
+		// Cached lazily from the inputRoot instance type (PresentationSource is internal).
+		var rootVisualProperty = CachedReflection.GetRootVisualProperty(inputRoot);
+		if (rootVisualProperty is null) return;
+		var rootVisual = rootVisualProperty.GetValue(inputRoot) as InputElement;
+		var topLevel = (rootVisual as ILogical)?.LogicalParent as TopLevel;
+		if (topLevel is null) return;
+
+		// Walk visual tree to find the (possibly unnamed) VisualLayerManager.
+		var vlm = FindVisualChild<VisualLayerManager>(topLevel);
+		if (vlm is null) return;
+
+		vlm.EnableOverlayLayer = true;
+		vlm.EnableTextSelectorLayer = true;
+
+		// EnablePopupOverlayLayer is an Avalonia internal property.
+		var popupOverlayProperty = CachedReflection.VisualLayerManager_EnablePopupOverlayLayer;
+		if (popupOverlayProperty is not null)
+			popupOverlayProperty.SetValue(vlm, true);
+
+		_popupLayerEnabled = true;
+	}
+
+	private static T? FindVisualChild<T>(Visual parent) where T : Visual {
+		var childrenProperty = CachedReflection.Visual_VisualChildren;
+		if (childrenProperty is null) return null;
+		var children = childrenProperty.GetValue(parent) as IEnumerable<Visual>;
+		if (children is null) return null;
+		foreach (var child in children) {
+			if (child is T typed) return typed;
+			if (FindVisualChild<T>(child) is { } result) return result;
+		}
+		return null;
+	}
+
+	/// <summary>
+	/// Caches reflection lookups for Avalonia internal APIs to:
+	/// 1. Avoid repeated reflection overhead on every _Process tick
+	/// 2. Fail fast and deterministically if APIs are trimmed by AOT
+	/// 3. Centralize all Avalonia internal API access for easy maintenance
+	/// </summary>
+	private static class CachedReflection {
+		private static PropertyInfo? s_rootVisualProperty;
+		private static bool s_rootVisualResolved;
+		private static PropertyInfo? s_visualVisualChildren;
+		private static PropertyInfo? s_vlmEnablePopupOverlayLayer;
+		private static bool s_initialized;
+
+		public static PropertyInfo? Visual_VisualChildren => s_visualVisualChildren;
+		public static PropertyInfo? VisualLayerManager_EnablePopupOverlayLayer => s_vlmEnablePopupOverlayLayer;
+
+		/// <summary>
+		/// Lazily resolves and caches the RootVisual property from the
+		/// PresentationSource type (which is internal in Avalonia).
+		/// Returns null if the property is not found (e.g. trimmed by AOT).
+		/// </summary>
+		public static PropertyInfo? GetRootVisualProperty(IInputRoot inputRoot) {
+			if (s_rootVisualResolved)
+				return s_rootVisualProperty;
+
+			s_rootVisualResolved = true;
+			s_rootVisualProperty = inputRoot.GetType().GetProperty("RootVisual",
+				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+			return s_rootVisualProperty;
+		}
+
+		static CachedReflection() {
+			if (s_initialized) return;
+			s_initialized = true;
+
+			s_visualVisualChildren = typeof(Visual).GetProperty("VisualChildren",
+				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+			s_vlmEnablePopupOverlayLayer = typeof(VisualLayerManager).GetProperty("EnablePopupOverlayLayer",
+				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+		}
 	}
 
 	private void OnCloseRequested() {
@@ -274,12 +376,8 @@ namespace JLeb.Estragonia;
 		//   Resize() → _gdWindow.Size = X → OnSizeChanged → SetRenderSize →
 		//   Resized → layout → Resize() → _gdWindow.Size = X → OnSizeChanged → ...
 		if (pixelSize != _lastProcessRenderSize) {
-			if (_isManagedDialog)
-				GD.Print($"[Dialog] OnSizeChanged EXTERNAL: gdSize={pixelSize}, lastRender={_lastProcessRenderSize} → SetRenderSize");
 			_lastProcessRenderSize = pixelSize;
 			_topLevelImpl.SetRenderSize(pixelSize, 1.0);
-		} else if (_isManagedDialog) {
-			GD.Print($"[Dialog] OnSizeChanged SKIP (matches lastRender): gdSize={pixelSize}");
 		}
 
 		// DisplayServer.WindowGetPosition fails if window isn't registered yet
@@ -339,8 +437,18 @@ namespace JLeb.Estragonia;
 			_gdWindow.WindowInput -= OnWindowInput;
 			_gdWindow.FilesDropped -= OnFilesDropped;
 			if (_gdWindow.IsInsideTree()) {
-				_gdWindow.GetParent()?.RemoveChild(_gdWindow);
-				_gdWindow.QueueFree();
+				// Hide immediately to stop visual updates.
+				// Defer RemoveChild + QueueFree to end of frame to avoid
+				// _push_unhandled_input_internal !is_inside_tree() error:
+				// Dispose is called during input processing (close button click),
+				// and Godot's input pipeline still holds a reference to this
+				// viewport. Immediate RemoveChild causes the engine to push
+				// unhandled input to a node no longer in the tree.
+				_gdWindow.Visible = false;
+				var parent = _gdWindow.GetParent();
+				if (parent != null)
+					parent.CallDeferred(Godot.Node.MethodName.RemoveChild, _gdWindow);
+				_gdWindow.CallDeferred(Godot.Node.MethodName.QueueFree);
 			}
 		}
 		_topLevelImpl.Dispose();
@@ -385,8 +493,6 @@ namespace JLeb.Estragonia;
 			// SizeToContent where SetRenderSize → Resized → layout → Resize grows
 			// the window each frame.
 			if (pixelSize != _owner._lastProcessRenderSize) {
-				if (_owner._isManagedDialog)
-					GD.Print($"[Dialog] _Process SIZE DIFF: gdSize={pixelSize}, lastRender={_owner._lastProcessRenderSize} → SetRenderSize + RunJobs");
 				_owner._lastProcessRenderSize = pixelSize;
 				_owner._topLevelImpl.SetRenderSize(pixelSize, 1.0);
 				// Run queued layout jobs triggered by SetRenderSize before drawing.
@@ -394,6 +500,9 @@ namespace JLeb.Estragonia;
 				// OnDraw renders with the old layout onto the new surface.
 				AvDispatcher.UIThread.RunJobs();
 			}
+
+			// Enable popup overlay after first layout pass (needs valid size).
+			_owner.TryEnablePopupOverlayLayer();
 
 			// For SizeToContent windows, re-center after Avalonia layout determines
 			// the actual content size (which differs from the initial 400×300 default).
