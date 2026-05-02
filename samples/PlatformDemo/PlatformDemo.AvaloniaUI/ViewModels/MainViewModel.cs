@@ -108,17 +108,15 @@ public partial class MainViewModel : ViewModelBase {
 
 	/// <summary>
 	/// Shows a real Avalonia modal dialog using IWindowImpl.
-	/// Note: ShowDialog requires an owner Window, which doesn't exist in Godot embedded mode.
-	/// This will likely fail until owner window support is implemented.
+	/// Requires <see cref="IClassicDesktopStyleApplicationLifetime"/> to be registered
+	/// so that <see cref="GetOwnerWindow"/> can find an owner window.
 	/// </summary>
 	[RelayCommand]
 	private async Task ShowRealDialogAsync() {
 		try {
-			// In Godot embedded mode, we don't have an owner Window (IClassicDesktopStyleApplicationLifetime).
-			// ShowDialog requires an owner. This tests the IWindowImpl path.
 			var owner = GetOwnerWindow();
 			if (owner is null) {
-				RealWindowResultText = "ShowDialog requires an owner Window — not available in Godot embedded mode. Use Show() instead.";
+				RealWindowResultText = "ShowDialog requires an owner Window — click 'Show Window' first to create one.";
 				return;
 			}
 
@@ -146,8 +144,16 @@ public partial class MainViewModel : ViewModelBase {
 	}
 
 	private static Window? GetOwnerWindow() {
-		if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-			return desktop.MainWindow;
+		if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop) {
+			// First try MainWindow (traditional desktop)
+			if (desktop.MainWindow is { IsVisible: true } mainWindow)
+				return mainWindow;
+			// In Godot mode, MainWindow may be null. Find any visible window.
+			foreach (var w in desktop.Windows) {
+				if (w.IsVisible)
+					return w;
+			}
+		}
 		return null;
 	}
 
