@@ -1,4 +1,4 @@
-<Project Sdk="Godot.NET.Sdk/4.6.2">
+<Project Sdk="Godot.NET.Sdk/4.6.1">
 
 	<PropertyGroup>
 		<AssemblyTitle>Estragonia GameMenu Sample</AssemblyTitle>
@@ -22,8 +22,8 @@
 
 	<ItemGroup>
 		<PackageReference Include="Avalonia.Themes.Simple" Version="12.*" />
-		<PackageReference Include="Avalonia.Xaml.Behaviors" Version="11.*" />
-		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+		<PackageReference Include="Xaml.Behaviors" Version="12.*" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.*" />
 	</ItemGroup>
 
 	<ItemGroup>
