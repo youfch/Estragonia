@@ -238,6 +238,13 @@ public class AvaloniaControl : GdControl {
 		if (_topLevel is null)
 			return;
 
+		// Debug: log all events during potential OS drag state
+		if (@event is InputEventMouseMotion dbgMotion) {
+			GD.Print($"[OSD] _GuiInput mouse motion: justEntered={_mouseJustEnteredWindow}, hovering={_osdDragHovering}, buttons={dbgMotion.ButtonMask}, pos={dbgMotion.Position}");
+		} else if (@event is InputEventMouseButton) {
+			GD.Print($"[OSD] _GuiInput mouse button");
+		}
+
 		// Detect OS file drag-and-drop hover:
 		// When files are dragged from the OS file manager into the window,
 		// Godot sends InputEventMouseMotion with no button mask.
@@ -247,15 +254,18 @@ public class AvaloniaControl : GdControl {
 			// Mouse entered from outside with no buttons — likely an OS file drag
 			_mouseJustEnteredWindow = false;
 			var localPos = motion.Position;
+			GD.Print($"[OSD] Attempting DragEnter at {localPos}");
 			if (_topLevel.Impl.OnOsdDragEnter(localPos, Time.GetTicksMsec())) {
 				_osdDragHovering = true;
+				GD.Print("[OSD] DragEnter succeeded, hovering=true");
 				AcceptEvent();
 				return;
 			}
-			_mouseJustEnteredWindow = false;
+			GD.Print("[OSD] DragEnter failed (OnOsdDragEnter returned false)");
 		} else if (_mouseJustEnteredWindow) {
 			// First event after entering was a button press or something else — not an OS drag
 			_mouseJustEnteredWindow = false;
+			GD.Print($"[OSD] First event after enter was {@event.GetType().Name} — not OS drag");
 		}
 
 		// Continue OS drag hover — synthesize DragOver on each mouse motion
@@ -391,11 +401,13 @@ public class AvaloniaControl : GdControl {
 
 	private void OnRootMouseEntered() {
 		// Flag that mouse just entered from outside — used to detect OS file drag
+		GD.Print("[OSD] Root MouseEntered");
 		_mouseJustEnteredWindow = true;
 	}
 
 	private void OnRootMouseExited() {
 		// End OS drag hover session when mouse leaves the window
+		GD.Print($"[OSD] Root MouseExited, hovering={_osdDragHovering}");
 		if (_osdDragHovering) {
 			_osdDragHovering = false;
 			_topLevel?.Impl.OnOsdDragLeave();
@@ -404,6 +416,7 @@ public class AvaloniaControl : GdControl {
 	}
 
 	private void OnFilesDropped(string[] files) {
+		GD.Print($"[OSD] OnFilesDropped: {files.Length} files, hovering={_osdDragHovering}");
 		if (_topLevel is null || files.Length == 0)
 			return;
 
@@ -412,6 +425,7 @@ public class AvaloniaControl : GdControl {
 		// Get the mouse position relative to this control
 		var mousePos = GetGlobalMousePosition();
 		var localPos = mousePos - GlobalPosition;
+		GD.Print($"[OSD] OnFilesDropped: mousePos={mousePos}, localPos={localPos}");
 
 		if (_topLevel.Impl.OnFilesDropped(files, localPos, Time.GetTicksMsec()))
 			AcceptEvent();

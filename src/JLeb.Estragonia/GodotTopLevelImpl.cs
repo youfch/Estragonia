@@ -425,9 +425,12 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 		// but contains no actual items until the drop
 		var dataTransfer = CreateOsdPlaceholderTransfer();
 
+		GD.Print($"[OSD] OnOsdDragEnter: point={point}, hasInputRoot={_inputRoot != null}");
+
 		var args = new RawDragEvent(dragDevice, RawDragEventType.DragEnter, _inputRoot, point, dataTransfer, DragDropEffects.Copy | DragDropEffects.Link, modifiers);
 		input(args);
 
+		GD.Print($"[OSD] OnOsdDragEnter result: Handled={args.Handled}, Effects={args.Effects}");
 		return args.Handled;
 	}
 
@@ -478,12 +481,12 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 	/// </summary>
 	private static DataTransfer CreateOsdPlaceholderTransfer() {
 		var dataTransfer = new DataTransfer();
-		// Add a file item with a null storage item — Contains(DataFormat.File) will return true
-		// because the format is registered, even though TryGetFiles() returns null items.
-		// The Avalonia handler checks e.DataTransfer.Contains(DataFormat.File) in DragOver.
-		var item = new DataTransferItem();
-		item.SetFile(null);
-		dataTransfer.Add(item);
+		// Create a dummy IStorageItem so DataFormat.File is registered.
+		// SetFile(null) would remove the format entirely via RemoveCore.
+		// We use a non-existent path — the item is never actually accessed
+		// during hover; it only needs to advertise that File format is available.
+		var dummyItem = new BclStorageFile(new FileInfo("_osd_drag_placeholder"));
+		dataTransfer.Add(DataTransferItem.CreateFile(dummyItem));
 		return dataTransfer;
 	}
 

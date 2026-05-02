@@ -77,9 +77,9 @@ internal static class GodotPlatform {
 					IsManagedDialogWindow = true;
 					try {
 						return new Avalonia.Controls.Window {
-							//Width = 900,
-							//Height = 563,
-							SizeToContent = Avalonia.Controls.SizeToContent.WidthAndHeight
+							Width = 900,
+							Height = 563,
+							//SizeToContent = Avalonia.Controls.SizeToContent.WidthAndHeight
 						};
 					} finally {
 						IsManagedDialogWindow = false;
