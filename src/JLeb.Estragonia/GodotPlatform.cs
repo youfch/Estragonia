@@ -39,19 +39,26 @@ internal static class GodotPlatform {
 			.Bind<IPlatformIconLoader>().ToConstant(new StubPlatformIconLoader())
 			.Bind<IPlatformSettings>().ToConstant(new GodotPlatformSettings())
 			.Bind<IRenderTimer>().ToConstant(renderTimer)
+			.Bind<IRenderLoop>().ToConstant(RenderLoop.FromTimer(renderTimer))
 			.Bind<IWindowingPlatform>().ToConstant(new GodotWindowingPlatform())
-			.Bind<IStorageProviderFactory>().ToConstant(new GodotStorageProviderFactory())
-			.Bind<PlatformHotkeyConfiguration>().ToConstant(CreatePlatformHotKeyConfiguration())
-			.Bind<ManagedFileDialogOptions>().ToConstant(new ManagedFileDialogOptions { AllowDirectorySelection = true });
+			.Bind<ManagedFileDialogOptions>().ToConstant(new ManagedFileDialogOptions {
+				AllowDirectorySelection = true,
+				// Force managed file dialogs to use the Window path instead of the Popup path.
+				// In Godot mode, the parent TopLevel is GodotTopLevel (not Window), so
+				// ManagedStorageProvider.ShowAsPopup() would fail because it can't find a Panel
+				// in the visual tree. By providing a Window as ContentRootFactory, PrepareRoot()
+				// returns a Window and Show() takes the ShowAsWindow() path, which creates
+				// an overlay window via GodotWindowingPlatform.CreateWindow().
+				// SizeToContent.WidthAndHeight makes the dialog auto-size to its content
+				// (ManagedFileChooser needs ~900x500+ to display properly).
+				ContentRootFactory = () => new Avalonia.Controls.Window {
+					SizeToContent = Avalonia.Controls.SizeToContent.WidthAndHeight
+				}
+			});
 
 		s_renderTimer = renderTimer;
 		s_compositor = new AvCompositor(platformGraphics);
 	}
-
-	private static PlatformHotkeyConfiguration CreatePlatformHotKeyConfiguration()
-		=> OperatingSystem.IsMacOS()
-			? new PlatformHotkeyConfiguration(commandModifiers: KeyModifiers.Meta, wholeWordTextActionModifiers: KeyModifiers.Alt)
-			: new PlatformHotkeyConfiguration(commandModifiers: KeyModifiers.Control);
 
 	public static void TriggerRenderTick() {
 		if (s_renderTimer is null)

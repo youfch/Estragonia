@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text.Unicode;
 using Avalonia;
 using Avalonia.Platform;
+using Avalonia.Platform.Surfaces;
 using Avalonia.Skia;
 using Godot;
 using SkiaSharp;
@@ -15,7 +16,7 @@ using Environment = System.Environment;
 namespace JLeb.Estragonia;
 
 /// <summary>Bridges the Godot Vulkan renderer with a Skia context used by Avalonia.</summary>
-internal sealed class GodotVkSkiaGpu : ISkiaGpu {
+internal sealed class GodotVkSkiaGpu : ISkiaGpu, IOptionalFeatureProvider {
 
 	private readonly RenderingDevice _renderingDevice;
 	private readonly GRContext _grContext;
@@ -122,10 +123,19 @@ internal sealed class GodotVkSkiaGpu : ISkiaGpu {
 	IDisposable IPlatformGraphicsContext.EnsureCurrent()
 		=> EmptyDisposable.Instance;
 
-	ISkiaGpuRenderTarget? ISkiaGpu.TryCreateRenderTarget(IEnumerable<object> surfaces)
+	public IPlatformGraphicsContext? PlatformGraphicsContext
+		=> this;
+
+	public bool IsReadyToCreateRenderTarget(IEnumerable<IPlatformRenderSurface> surfaces)
+		=> true;
+
+	public ISkiaGpuRenderTarget? TryCreateRenderTarget(IEnumerable<IPlatformRenderSurface> surfaces)
 		=> surfaces.OfType<GodotSkiaSurface>().FirstOrDefault() is { } surface
 			? new GodotSkiaRenderTarget(surface, _grContext, _barrierHelper)
 			: null;
+
+	public IScopedResource<GRContext>? TryGetGrContext()
+		=> ScopedResource<GRContext>.Create(_grContext, static () => { });
 
 	public GodotSkiaSurface CreateSurface(PixelSize size, double renderScaling) {
 		size = new PixelSize(Math.Max(size.Width, 1), Math.Max(size.Height, 1));
@@ -175,7 +185,7 @@ internal sealed class GodotVkSkiaGpu : ISkiaGpu {
 
 		var skSurface = SKSurface.Create(
 			_grContext,
-			new GRBackendRenderTarget(size.Width, size.Height, 1, grVkImageInfo),
+			new GRBackendRenderTarget(size.Width, size.Height, grVkImageInfo),
 			GRSurfaceOrigin.TopLeft,
 			SKColorType.Rgba8888,
 			new SKSurfaceProperties(SKPixelGeometry.RgbHorizontal)
@@ -203,7 +213,7 @@ internal sealed class GodotVkSkiaGpu : ISkiaGpu {
 		return surface;
 	}
 
-	ISkiaSurface? ISkiaGpu.TryCreateSurface(PixelSize size, ISkiaGpuRenderSession? session)
+	public ISkiaSurface? TryCreateSurface(PixelSize size, ISkiaGpuRenderSession? session)
 		=> session is GodotSkiaGpuRenderSession godotSession
 			? CreateSurface(size, godotSession.Surface.RenderScaling)
 			: null;

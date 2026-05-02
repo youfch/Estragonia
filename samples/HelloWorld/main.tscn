@@ -1,7 +1,7 @@
-[gd_scene load_steps=11 format=3 uid="uid://cy7yp8x3nfiva"]
+[gd_scene format=3 uid="uid://cy7yp8x3nfiva"]
 
-[ext_resource type="Script" path="res://UserInterface.cs" id="1_intl0"]
 [ext_resource type="Texture2D" uid="uid://vbp54an5411" path="res://icon.svg" id="1_wmsuv"]
+[ext_resource type="Script" uid="uid://cgxsi4801y2eq" path="res://UserInterface.cs" id="3_h2yge"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_xuun1"]
 sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
@@ -58,35 +58,35 @@ tracks/0/keys = {
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_jucv5"]
 _data = {
-"RESET": SubResource("Animation_krov7"),
-"cube_rotation": SubResource("Animation_wwi7v")
+&"RESET": SubResource("Animation_krov7"),
+&"cube_rotation": SubResource("Animation_wwi7v")
 }
 
-[node name="Root" type="Node3D"]
+[node name="Root" type="Node3D" unique_id=1856171560]
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
-environment = SubResource("Environment_imgjg")
+[node name="AvaloniaLoader" type="Node" parent="." unique_id=1411964505]
 
-[node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(0.885816, -0.121258, 0.447913, 0, 0.965255, 0.261311, -0.464037, -0.231474, 0.855038, 2.43753, 1.42204, 4.65308)
-
-[node name="Cube" type="MeshInstance3D" parent="."]
-transform = Transform3D(-4, 0, 1.01407e-05, 0, 4, 0, -1.01407e-05, 0, -4, 0, 0.25, 0)
-mesh = SubResource("BoxMesh_qchun")
-
-[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
-root_node = NodePath("../Cube")
-libraries = {
-"": SubResource("AnimationLibrary_jucv5")
-}
-autoplay = "cube_rotation"
-
-[node name="UserInterface" type="Control" parent="."]
+[node name="UserInterface" type="Control" parent="." unique_id=225839100]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-focus_mode = 2
-script = ExtResource("1_intl0")
+script = ExtResource("3_h2yge")
+metadata/_edit_use_anchors_ = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1473589513]
+environment = SubResource("Environment_imgjg")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1957918996]
+transform = Transform3D(0.885816, -0.121258, 0.447913, 0, 0.965255, 0.261311, -0.464037, -0.231474, 0.855038, 2.43753, 1.42204, 4.65308)
+
+[node name="Cube" type="MeshInstance3D" parent="." unique_id=1682966284]
+transform = Transform3D(-4, 0, 1.0140727e-05, 0, 4, 0, -1.0140727e-05, 0, -4, 0, 0.25, 0)
+mesh = SubResource("BoxMesh_qchun")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=445909204]
+root_node = NodePath("../Cube")
+libraries/ = SubResource("AnimationLibrary_jucv5")
+autoplay = &"cube_rotation"

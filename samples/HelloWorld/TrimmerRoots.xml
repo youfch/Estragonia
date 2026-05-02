@@ -1,0 +1,8 @@
+<linker>
+  <!-- Preserve all types for NativeAOT.
+       Godot resolves C# scripts by class name at runtime, so the trimmer
+       must not remove any script class, its members, or its base types.
+       Estragonia is also preserved as it provides critical base types
+       and GPU rendering interop that the trimmer cannot trace statically. -->
+  <assembly fullname="JLeb.Estragonia" preserve="all" />
+</linker>

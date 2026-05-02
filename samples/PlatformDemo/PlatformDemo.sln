@@ -1,0 +1,43 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.6.11723.189
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlatformDemo.Godot", "PlatformDemo.Godot\PlatformDemo.Godot.csproj", "{A1B2C3D4-0001-0001-0001-000000000001}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PlatformDemo.AvaloniaUI", "PlatformDemo.AvaloniaUI\PlatformDemo.AvaloniaUI.csproj", "{A1B2C3D4-0002-0002-0002-000000000002}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JLeb.Estragonia", "..\..\src\JLeb.Estragonia\JLeb.Estragonia.csproj", "{AD2C8C10-D158-23DD-C11B-941ACF442ADF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		ExportDebug|Any CPU = ExportDebug|Any CPU
+		ExportRelease|Any CPU = ExportRelease|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A1B2C3D4-0001-0001-0001-000000000001}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-0001-0001-0001-000000000001}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-0001-0001-0001-000000000001}.ExportDebug|Any CPU.ActiveCfg = ExportDebug|Any CPU
+		{A1B2C3D4-0001-0001-0001-000000000001}.ExportDebug|Any CPU.Build.0 = ExportDebug|Any CPU
+		{A1B2C3D4-0001-0001-0001-000000000001}.ExportRelease|Any CPU.ActiveCfg = ExportRelease|Any CPU
+		{A1B2C3D4-0001-0001-0001-000000000001}.ExportRelease|Any CPU.Build.0 = ExportRelease|Any CPU
+		{A1B2C3D4-0002-0002-0002-000000000002}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-0002-0002-0002-000000000002}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-0002-0002-0002-000000000002}.ExportDebug|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-0002-0002-0002-000000000002}.ExportDebug|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-0002-0002-0002-000000000002}.ExportRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-0002-0002-0002-000000000002}.ExportRelease|Any CPU.Build.0 = Release|Any CPU
+		{AD2C8C10-D158-23DD-C11B-941ACF442ADF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD2C8C10-D158-23DD-C11B-941ACF442ADF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD2C8C10-D158-23DD-C11B-941ACF442ADF}.ExportDebug|Any CPU.ActiveCfg = Release|Any CPU
+		{AD2C8C10-D158-23DD-C11B-941ACF442ADF}.ExportDebug|Any CPU.Build.0 = Release|Any CPU
+		{AD2C8C10-D158-23DD-C11B-941ACF442ADF}.ExportRelease|Any CPU.ActiveCfg = Release|Any CPU
+		{AD2C8C10-D158-23DD-C11B-941ACF442ADF}.ExportRelease|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A1B2C3D4-0000-0000-0000-000000000000}
+	EndGlobalSection
+EndGlobal

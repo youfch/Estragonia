@@ -6,3 +6,7 @@ obj/
 /_ReSharper.Caches/
 *.user
 *.blend1
+*.import
+*.csproj.old
+*.uid
+tests/

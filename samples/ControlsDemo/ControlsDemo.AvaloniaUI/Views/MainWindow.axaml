@@ -1,0 +1,171 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:ControlsDemo.AvaloniaUI.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
+        x:Class="ControlsDemo.AvaloniaUI.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <UserControl.Styles>
+
+        <!-- Card container -->
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="#1E1E1E" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="24" />
+            <Setter Property="Margin" Value="0,0,0,16" />
+        </Style>
+
+        <!-- Section header -->
+        <Style Selector="TextBlock.h2">
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,16" />
+        </Style>
+
+        <!-- Field label -->
+        <Style Selector="TextBlock.field-label">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="#999999" />
+            <Setter Property="Margin" Value="0,12,0,4" />
+        </Style>
+
+    </UserControl.Styles>
+
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="40" MaxWidth="720">
+
+            <!-- Page Header -->
+            <TextBlock
+                Text="Controls Gallery"
+                FontSize="28"
+                FontWeight="Bold"
+                Margin="0,0,0,4" />
+            <TextBlock
+                Text="Avalonia 12 MVVM — Standard Template"
+                FontSize="14"
+                Foreground="#888888"
+                Margin="0,0,0,32" />
+
+            <!-- ════════════ Input Controls ════════════ -->
+            <Border Classes="card">
+                <StackPanel>
+                    <TextBlock Text="Input Controls" Classes="h2" />
+
+                    <TextBlock Text="TEXTBOX" Classes="field-label" />
+                    <TextBox Text="{Binding UserName}" PlaceholderText="Enter your name..." />
+
+                    <TextBlock Text="PASSWORD" Classes="field-label" />
+                    <TextBox Text="{Binding Password}" PasswordChar="●" PlaceholderText="Enter password" />
+
+                    <TextBlock Text="MULTILINE" Classes="field-label" />
+                    <TextBox
+                        Text="{Binding Notes}"
+                        AcceptsReturn="True"
+                        TextWrapping="Wrap"
+                        Height="80" />
+
+                    <TextBlock Text="COMBOBOX" Classes="field-label" />
+                    <ComboBox
+                        ItemsSource="{Binding Engines}"
+                        SelectedIndex="{Binding SelectedEngineIndex}"
+                        HorizontalAlignment="Stretch" />
+
+                    <TextBlock Text="NUMERIC SPINNER" Classes="field-label" />
+                    <NumericUpDown Value="{Binding NumericValue}" Minimum="0" Maximum="100" HorizontalAlignment="Stretch" />
+
+                </StackPanel>
+            </Border>
+
+            <!-- ════════════ Selection Controls ════════════ -->
+            <Border Classes="card">
+                <StackPanel>
+                    <TextBlock Text="Selection Controls" Classes="h2" />
+
+                    <CheckBox Content="Enable dark mode" IsChecked="{Binding IsDarkMode}" Margin="0,4" />
+                    <CheckBox Content="Show notifications" IsChecked="{Binding ShowNotifications}" Margin="0,4" />
+                    <CheckBox Content="Auto-save drafts" IsChecked="{Binding AutoSave}" Margin="0,4" />
+
+                    <TextBlock
+                        Text="{Binding IsDarkMode, StringFormat='Dark mode: {0}'}"
+                        FontSize="12"
+                        Foreground="#666666"
+                        Margin="0,12,0,0" />
+
+                </StackPanel>
+            </Border>
+
+            <!-- ════════════ Range Controls ════════════ -->
+            <Border Classes="card">
+                <StackPanel>
+                    <TextBlock Text="Range Controls" Classes="h2" />
+
+                    <TextBlock Text="{Binding Volume, StringFormat='VOLUME: {0:F0}%'}" Classes="field-label" />
+                    <Slider Minimum="0" Maximum="100" Value="{Binding Volume}" />
+
+                    <TextBlock Text="{Binding Brightness, StringFormat='BRIGHTNESS: {0:F0}%'}" Classes="field-label" />
+                    <Slider Minimum="0" Maximum="100" Value="{Binding Brightness}" />
+
+                    <TextBlock Text="{Binding DownloadProgress, StringFormat='DOWNLOAD PROGRESS: {0:F0}%'}" Classes="field-label" />
+                    <ProgressBar Value="{Binding DownloadProgress}" Maximum="100" Height="6" />
+
+                </StackPanel>
+            </Border>
+
+            <!-- ════════════ Buttons ════════════ -->
+            <Border Classes="card">
+                <StackPanel>
+                    <TextBlock Text="Buttons" Classes="h2" />
+
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,0,0,12">
+                        <Button Content="Greet" Command="{Binding GreetCommand}" />
+                        <Button Content="Count" Command="{Binding IncrementCommand}" />
+                        <Button Content="Disabled" IsEnabled="False" />
+                    </StackPanel>
+
+                    <TextBlock Text="{Binding GreetingText}" FontSize="14" Margin="0,0,0,8" />
+                    <TextBlock Text="{Binding Counter, StringFormat='Counter: {0}'}" FontSize="14" />
+
+                </StackPanel>
+            </Border>
+
+            <!-- ════════════ List ════════════ -->
+            <Border Classes="card">
+                <StackPanel>
+                    <TextBlock Text="List" Classes="h2" />
+
+                    <ListBox ItemsSource="{Binding Players}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate x:DataType="vm:PlayerItemViewModel">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <Ellipse Width="8" Height="8" Fill="{Binding StatusColor}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding DisplayText}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                </StackPanel>
+            </Border>
+
+            <!-- ════════════ Info Card ════════════ -->
+            <Border Classes="card" Background="#1A237E">
+                <StackPanel Spacing="8">
+                    <TextBlock Text="About This Demo" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock
+                        Text="Standard Avalonia 12 MVVM template with CommunityToolkit.Mvvm. Demonstrates data binding, commands, observable collections, and compiled bindings (x:DataType)."
+                        TextWrapping="Wrap"
+                        Opacity="0.8" />
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+
+</UserControl>

@@ -25,6 +25,86 @@ Samples:
 - [HelloWorld](https://github.com/MrJul/Estragonia/tree/main/samples/HelloWorld): a basic Avalonia-into-Godot setup.
 - [GameMenu](https://github.com/MrJul/Estragonia/tree/main/samples/GameMenu): a functional game menu UI using the MVVM pattern, with controller support, UI animations and scaling.
 
+## NativeAOT Export (Experimental)
+
+Estragonia supports NativeAOT compilation for Godot desktop exports, enabling fully native binaries without a managed runtime. This is experimental and requires manual configuration.
+
+### Prerequisites
+
+- Godot 4.6+ with .NET support
+- .NET 10 SDK (for `PublishAot` support)
+- A project using Estragonia with the `Godot.NET.Sdk`
+
+### Project Configuration
+
+Add the following to your `.csproj`:
+
+```xml
+<!-- Enable NativeAOT -->
+<PropertyGroup>
+    <PublishAot>true</PublishAot>
+</PropertyGroup>
+
+<!-- Prevent the trimmer from removing script classes and Estragonia types.
+     Godot discovers C# scripts by class name at runtime via reflection,
+     which the ILC trimmer cannot trace statically. -->
+<ItemGroup>
+    <TrimmerRootAssembly Include="$(TargetName)" />
+    <TrimmerRootAssembly Include="JLeb.Estragonia" />
+    <TrimmerRootDescriptor Include="TrimmerRoots.xml" />
+</ItemGroup>
+```
+
+Create a `TrimmerRoots.xml` file alongside your `.csproj`:
+
+```xml
+<linker>
+  <assembly fullname="YourProjectAssembly" preserve="all" />
+  <assembly fullname="JLeb.Estragonia" preserve="all" />
+</linker>
+```
+
+Replace `YourProjectAssembly` with your project's assembly name (from `[dotnet] project/assembly_name` in `project.godot`).
+
+### Fix: PrivateAssets Conflict
+
+If your `.csproj` contains an `<ItemDefinitionGroup>` that sets `<PackageReference PrivateAssets="all" />`, you must override this for assemblies that the ILC compiler needs. Add explicit `PrivateAssets="none"` overrides for GodotSharp and any directly-referenced Avalonia packages:
+
+```xml
+<ItemGroup>
+    <PackageReference Include="GodotSharp" Version="4.6.1" PrivateAssets="none" />
+</ItemGroup>
+
+<ItemDefinitionGroup>
+    <PackageReference PrivateAssets="all" />
+</ItemDefinitionGroup>
+
+<ItemGroup>
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.*" PrivateAssets="none" />
+    <PackageReference Include="Avalonia.HarfBuzz" Version="12.*" PrivateAssets="none" />
+</ItemGroup>
+```
+
+Without these overrides, `PrivateAssets="all"` prevents the assemblies from reaching the ILC compiler, causing `Failed to load assembly 'GodotSharp'` errors during publish.
+
+### Post-Export Step: Copy Native Libraries
+
+Godot's desktop export places .NET outputs in a `data_<project>_<platform>_<arch>` subdirectory. However, NativeAOT-compiled code resolves native DLLs (like `libSkiaSharp.dll`, `libHarfBuzzSharp.dll`) relative to the **host executable**, not the subdirectory. After exporting, copy these files from the `data_*` folder to the executable's directory:
+
+```powershell
+# Example: copy native SkiaSharp dependencies alongside the exported exe
+Copy-Item "export_dir/data_MyProject_windows_x86_64/libSkiaSharp.dll" "export_dir/"
+Copy-Item "export_dir/data_MyProject_windows_x86_64/libHarfBuzzSharp.dll" "export_dir/"
+```
+
+This step is required because Godot's export pipeline does not account for NativeAOT's DLL resolution behavior.
+
+### Known Limitations
+
+- **GodotSharp trim warnings**: `GodotSharp` is not annotated for trimming/AOT compatibility, so expect `IL2104`/`IL3053` warnings during publish. These are benign.
+- **Binary size**: With `preserve="all"` on both the project and Estragonia assemblies, trimming is effectively disabled for those assemblies, resulting in larger output.
+- **Desktop only tested**: This configuration has been tested on Windows desktop exports. Other platforms may require additional adjustments.
+
 ## License
 
 The whole Estragonia project source code is under the [MIT License](https://github.com/MrJul/Estragonia/blob/main/license.txt).  
