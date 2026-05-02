@@ -145,6 +145,9 @@ public class AvaloniaControl : GdControl {
 		_topLevel.Prepare();
 		_topLevel.StartRendering();
 
+		// Register as the overlay window host
+		OverlayWindowManager.RegisterHost(this);
+
 		Resized += OnResized;
 		FocusEntered += OnFocusEntered;
 		FocusExited += OnFocusExited;
@@ -162,6 +165,39 @@ public class AvaloniaControl : GdControl {
 		AvDispatcher.UIThread.RunJobs();
 
 		RenderAvalonia();
+
+		// Render all overlay windows and ensure the host redraws to composite their textures
+		if (OverlayWindowManager.Windows.Count > 0) {
+			RenderOverlayWindows();
+			QueueRedraw();
+		}
+	}
+
+	// Debug counters
+	private static int _debugOverlayFrames;
+	private static int _debugDrawFrames;
+
+	private void RenderOverlayWindows() {
+		foreach (var window in OverlayWindowManager.Windows) {
+			if (!window.IsVisible || window.IsDisposed)
+				continue;
+
+			var size = window.OverlaySize;
+
+			if (_debugOverlayFrames < 15) {
+				_debugOverlayFrames++;
+				var surf = window.TopLevelImpl.TryGetSurface();
+				GD.Print($"[RenderOverlayWindows] size=({size.X},{size.Y}) Paint={window.TopLevelImpl.Paint != null} Surface={surf != null} DrawCount={surf?.DrawCount ?? 0}");
+			}
+
+			window.TopLevelImpl.OnDraw(new Rect(new Size(size.X, size.Y)));
+
+			// Check DrawCount AFTER Paint to see if Skia actually rendered
+			if (_debugOverlayFrames <= 15) {
+				var surf2 = window.TopLevelImpl.TryGetSurface();
+				GD.Print($"[RenderOverlayWindows POST] DrawCount={surf2?.DrawCount ?? 0}");
+			}
+		}
 	}
 
 	private PixelSize GetFrameSize()
@@ -209,18 +245,97 @@ public class AvaloniaControl : GdControl {
 		if (_topLevel is null)
 			return;
 
-
 		var surface = _topLevel.Impl.GetOrCreateSurface();
-
 		DrawTexture(surface.GdTexture, Vector2.Zero);
+
+		// Composite overlay windows (bottom to top Z-order)
+		DrawOverlayWindows();
+	}
+
+	private void DrawOverlayWindows() {
+		foreach (var window in OverlayWindowManager.Windows) {
+			if (!window.IsVisible || window.IsDisposed)
+				continue;
+
+			var pos = window.OverlayPosition;
+			var size = window.OverlaySize;
+
+			// Debug: draw a bright magenta rectangle to verify position
+			DrawRect(new Rect2(pos.X, pos.Y, size.X, size.Y), new Color(1.0f, 0.0f, 1.0f, 0.3f));
+
+			var surface = window.TopLevelImpl.TryGetSurface();
+			if (_debugDrawFrames < 10) {
+				_debugDrawFrames++;
+				var texW = surface?.GdTexture?.GetWidth() ?? 0;
+				var texH = surface?.GdTexture?.GetHeight() ?? 0;
+				GD.Print($"[DrawOverlayWindows] pos=({pos.X},{pos.Y}) size=({size.X},{size.Y}) texSize=({texW},{texH})");
+			}
+
+			if (surface?.GdTexture != null) {
+				DrawTexture(surface.GdTexture, new Vector2(pos.X, pos.Y));
+			}
+		}
 	}
 
 	public override void _GuiInput(InputEvent @event) {
 		if (_topLevel is null)
 			return;
 
+		// First, check if the event hits an overlay window
+		if (TryForwardToOverlayWindow(@event)) {
+			AcceptEvent();
+			return;
+		}
+
 		if (TryHandleInput(_topLevel.Impl, @event) || TryHandleAction(@event))
 			AcceptEvent();
+	}
+
+	private bool TryForwardToOverlayWindow(InputEvent @event) {
+		var timestamp = Time.GetTicksMsec();
+
+		// For mouse events, hit test against overlay windows
+		if (@event is InputEventMouseMotion mm) {
+			// During drag/resize, continue forwarding to the active window
+			var hitWindow = OverlayWindowManager.HitTest(mm.Position);
+			if (hitWindow != null)
+				return hitWindow.ProcessMouseMotion(mm, timestamp);
+		}
+
+		if (@event is InputEventMouseButton mb) {
+			var hitWindow = OverlayWindowManager.HitTest(mb.Position);
+			if (hitWindow != null) {
+				OverlayWindowManager.BringToFront(hitWindow);
+				return hitWindow.ProcessMouseButton(mb, timestamp);
+			}
+		}
+
+		// Keyboard events go to the topmost visible overlay window (if any)
+		if (@event is InputEventKey k) {
+			var topWindow = GetTopOverlayWindow();
+			if (topWindow != null)
+				return topWindow.ProcessKey(k, timestamp);
+		}
+
+		// Other input events — check overlay windows
+		var hitWin = @event switch {
+			InputEventScreenTouch st => OverlayWindowManager.HitTest(st.Position),
+			_ => null
+		};
+
+		if (hitWin != null)
+			return hitWin.ProcessGenericInput(@event, timestamp);
+
+		return false;
+	}
+
+	private static GodotOverlayWindowImpl? GetTopOverlayWindow() {
+		var windows = OverlayWindowManager.Windows;
+		for (var i = windows.Count - 1; i >= 0; i--) {
+			if (windows[i].IsVisible && !windows[i].IsDisposed)
+				return windows[i];
+		}
+		return null;
 	}
 
 	private bool TryHandleAction(InputEvent inputEvent) {
@@ -345,6 +460,8 @@ public class AvaloniaControl : GdControl {
 			FocusEntered -= OnFocusEntered;
 			FocusExited -= OnFocusExited;
 			MouseExited -= OnMouseExited;
+
+			OverlayWindowManager.UnregisterHost(this);
 
 			_topLevel.Dispose();
 			_topLevel = null;

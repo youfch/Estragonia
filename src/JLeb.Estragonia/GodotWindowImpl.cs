@@ -97,7 +97,10 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 
 	public bool NeedsManagedDecorations => true;
 
-	public PlatformRequestedDrawnDecoration RequestedDrawnDecorations => PlatformRequestedDrawnDecoration.None;
+	public PlatformRequestedDrawnDecoration RequestedDrawnDecorations
+		=> PlatformRequestedDrawnDecoration.TitleBar
+			| PlatformRequestedDrawnDecoration.Border
+			| PlatformRequestedDrawnDecoration.ResizeGrips;
 
 	public Thickness ExtendedMargins => default;
 
@@ -140,11 +143,19 @@ internal sealed class GodotWindowImpl : IWindowImpl {
 	// --- Show / Hide / Activate ---
 
 	public void Show(bool activate, bool isDialog) {
-		if (_isDisposed)
+		if (_isDisposed || _isVisible)
 			return;
 
 		var sceneTree = (SceneTree)Engine.GetMainLoop();
 		sceneTree.Root.AddChild(_gdWindow);
+
+		// Center the sub-window relative to the main viewport
+		var mainWinSize = sceneTree.Root.Size;
+		var subWinSize = _gdWindow.Size;
+		_gdWindow.Position = new Vector2I(
+			Math.Max((mainWinSize.X - subWinSize.X) / 2, 0),
+			Math.Max((mainWinSize.Y - subWinSize.Y) / 2, 0)
+		);
 
 		// Set initial render size
 		var size = _gdWindow.Size;
