@@ -22,6 +22,14 @@ internal static class GodotPlatform {
 	private static ulong s_lastProcessFrame = UInt64.MaxValue;
 	private static GodotApplicationLifetime? s_lifetime;
 
+	/// <summary>
+	/// Set to <c>true</c> during <c>ManagedFileDialogOptions.ContentRootFactory</c> invocation
+	/// so that <see cref="GodotWindowImpl" /> can detect the resulting window is a managed
+	/// file dialog and configure modal behavior accordingly.
+	/// </summary>
+	[ThreadStatic]
+	internal static bool IsManagedDialogWindow;
+
 	public static AvCompositor Compositor
 		=> s_compositor ?? throw new InvalidOperationException($"{nameof(GodotPlatform)} hasn't been initialized");
 
@@ -60,10 +68,19 @@ internal static class GodotPlatform {
 				// in the visual tree. By providing a Window as ContentRootFactory, PrepareRoot()
 				// returns a Window and Show() takes the ShowAsWindow() path, which creates
 				// an overlay window via GodotWindowingPlatform.CreateWindow().
-				// SizeToContent.WidthAndHeight makes the dialog auto-size to its content
-				// (ManagedFileChooser needs ~900x500+ to display properly).
-				ContentRootFactory = () => new Avalonia.Controls.Window {
-					SizeToContent = Avalonia.Controls.SizeToContent.WidthAndHeight
+				// IsManagedDialogWindow flag is set during factory invocation so GodotWindowImpl
+				// can configure Godot Transient + Exclusive for modal blocking.
+				// SizeToContent.WidthAndHeight lets Avalonia's layout system determine
+				// the window size based on ManagedFileChooser's content.
+				ContentRootFactory = () => {
+					IsManagedDialogWindow = true;
+					try {
+						return new Avalonia.Controls.Window {
+							SizeToContent = Avalonia.Controls.SizeToContent.WidthAndHeight
+						};
+					} finally {
+						IsManagedDialogWindow = false;
+					}
 				}
 			});
 
