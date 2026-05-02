@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading;
 using Avalonia;
 using Avalonia.Controls.Platform;
@@ -70,13 +70,16 @@ internal static class GodotPlatform {
 				// an overlay window via GodotWindowingPlatform.CreateWindow().
 				// IsManagedDialogWindow flag is set during factory invocation so GodotWindowImpl
 				// can configure Godot Transient + Exclusive for modal blocking.
-				// SizeToContent.WidthAndHeight lets Avalonia's layout system determine
-				// the window size based on ManagedFileChooser's content.
+				// Fixed Width/Height: SizeToContent.WidthAndHeight causes Y-axis growth on
+				// repeated dialog opens due to Avalonia's ManagedFileChooser measuring larger
+				// Y values each time (internal QuickLinks/volumes state accumulation).
 				ContentRootFactory = () => {
 					IsManagedDialogWindow = true;
 					try {
 						return new Avalonia.Controls.Window {
-							SizeToContent = Avalonia.Controls.SizeToContent.WidthAndHeight
+							Width = 900,
+							Height = 563,
+							//SizeToContent = Avalonia.Controls.SizeToContent.WidthAndHeight
 						};
 					} finally {
 						IsManagedDialogWindow = false;

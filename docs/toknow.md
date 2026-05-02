@@ -61,3 +61,26 @@ Implement proper keyboard handling and you should have controller UI support for
 This is the technique used in the [GameMenu sample](../samples/GameMenu).
 
 If you prefer to disable this behavior and handle everything manually instead, set `AutoConvertUIActionToKeyDown` to `false` in the `AvaloniaControl`.
+
+# Drag and Drop
+
+## OS File Drop
+
+Estragonia supports receiving files dropped from the OS file manager (e.g. dragging files from Windows Explorer onto an Avalonia control). This works via Godot's `Window.FilesDropped` signal, which Estragonia converts into Avalonia's `DragDrop.DropEvent`.
+
+To accept file drops in your Avalonia control:
+
+1. Set `DragDrop.AllowDrop="True"` on the target control in XAML.
+2. Handle the `DragDrop.DropEvent` and use `e.DataTransfer.TryGetFiles()` to retrieve the dropped file paths.
+
+See the PlatformDemo sample for a complete example.
+
+## OS File Drag Hover (Limitation)
+
+**Drag hover highlighting is not supported when dragging files from the OS into a Godot-embedded Avalonia control.** The `DragDrop.DragOverEvent` will not fire during the hover phase — it only fires at the moment of the drop.
+
+**Why:** On Windows, Godot uses the OLE `IDropTarget` COM interface for OS file drag-and-drop. The `DragEnter`/`DragOver`/`DragLeave` callbacks are handled entirely in Godot's C++ platform layer (`DropTargetWindows`). During an OLE drag operation, Windows suppresses normal `WM_MOUSEMOVE` messages, so Godot does not emit `InputEventMouseMotion`, `Window.MouseEntered`, or any other signal that a C# script could observe. Only the final `Drop` callback is forwarded to the scripting layer via `Window.FilesDropped`.
+
+This same limitation applies on Linux (X11/Wayland) and macOS — Godot's `DisplayServer` only exposes a `drop_files_callback` with no corresponding drag-enter/over/leave callbacks.
+
+**Possible workaround:** A GDExtension (C++ via `godot-cpp`) could implement a custom `IDropTarget` that calls back into C# during `DragEnter`/`DragOver`/`DragLeave`, enabling full hover highlighting. This would require native platform code and is outside the scope of pure C# / Godot .NET SDK.

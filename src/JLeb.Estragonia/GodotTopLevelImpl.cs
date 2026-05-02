@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Input.Raw;
 using Avalonia.Platform;
+using Avalonia.Platform.Storage;
 using Avalonia.Platform.Surfaces;
 using Godot;
 using JLeb.Estragonia.Input;
@@ -395,6 +397,41 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 		input(args);
 
 		return args.Handled;
+	}
+
+	/// <summary>
+	/// Handles files dropped from the OS onto the Godot window.
+	/// First sends DragLeave to end any hover session, then
+	/// synthesizes DragEnter → DragOver → Drop with real file data.
+	/// </summary>
+	public bool OnFilesDropped(string[] files, Vector2 position, ulong timestamp) {
+		if (_inputRoot is null || Input is not { } input)
+			return false;
+
+		var point = position.ToAvaloniaPoint() / RenderScaling;
+		var modifiers = InputModifiersProvider.GetRawInputModifiers();
+		var device = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
+
+		// Build IDataTransfer from the dropped file paths
+		var dataTransfer = new DataTransfer();
+		foreach (var filePath in files) {
+			IStorageItem storageItem = Directory.Exists(filePath)
+				? new BclStorageFolder(new DirectoryInfo(filePath))
+				: new BclStorageFile(new FileInfo(filePath));
+			dataTransfer.Add(DataTransferItem.CreateFile(storageItem));
+		}
+
+		// Synthesize DragEnter → DragOver → Drop sequence
+		var enterArgs = new RawDragEvent(device, RawDragEventType.DragEnter, _inputRoot, point, dataTransfer, DragDropEffects.Copy | DragDropEffects.Link, modifiers);
+		input(enterArgs);
+
+		var overArgs = new RawDragEvent(device, RawDragEventType.DragOver, _inputRoot, point, dataTransfer, DragDropEffects.Copy | DragDropEffects.Link, modifiers);
+		input(overArgs);
+
+		var dropArgs = new RawDragEvent(device, RawDragEventType.Drop, _inputRoot, point, dataTransfer, DragDropEffects.Copy | DragDropEffects.Link, modifiers);
+		input(dropArgs);
+
+		return dropArgs.Handled;
 	}
 
 	void ITopLevelImpl.SetInputRoot(IInputRoot inputRoot)
