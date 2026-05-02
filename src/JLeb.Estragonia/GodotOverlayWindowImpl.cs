@@ -334,6 +334,8 @@ internal sealed class GodotOverlayWindowImpl : IWindowImpl {
 		if (_isDisposed)
 			return;
 
+		GD.Print($"[GodotOverlayWindowImpl.Dispose] windows={OverlayWindowManager.Windows.Count}");
+
 		_isDisposed = true;
 		_isVisible = false;
 

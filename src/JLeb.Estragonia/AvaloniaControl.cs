@@ -22,6 +22,7 @@ namespace JLeb.Estragonia;
 public class AvaloniaControl : GdControl {
 
 	private AvControl? _control;
+	private bool _hadOverlayWindows;
 	private double _renderScaling = 1.0;
 	private GodotTopLevel? _topLevel;
 
@@ -167,8 +168,11 @@ public class AvaloniaControl : GdControl {
 		RenderAvalonia();
 
 		// Render all overlay windows and ensure the host redraws to composite their textures
-		if (OverlayWindowManager.Windows.Count > 0) {
-			RenderOverlayWindows();
+		var overlayCount = OverlayWindowManager.Windows.Count;
+		if (overlayCount > 0 || _hadOverlayWindows) {
+			if (overlayCount > 0)
+				RenderOverlayWindows();
+			_hadOverlayWindows = overlayCount > 0;
 			QueueRedraw();
 		}
 	}
