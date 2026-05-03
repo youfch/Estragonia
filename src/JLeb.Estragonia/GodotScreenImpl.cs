@@ -31,6 +31,8 @@ internal sealed class GodotScreenImpl : IScreenImpl {
 
 	private readonly GodotScreen _primaryScreen;
 	private readonly GodotScreen[] _allScreens;
+	private int _lastScreenWidth;
+	private int _lastScreenHeight;
 
 	public GodotScreenImpl() {
 		var screenSize = DisplayServer.ScreenGetSize();
@@ -38,11 +40,47 @@ internal sealed class GodotScreenImpl : IScreenImpl {
 		var scaling = DisplayServer.ScreenGetScale();
 
 		var bounds = new PixelRect(screenPosition.X, screenPosition.Y, screenSize.X, screenSize.Y);
+		var workingArea = GodotPlatform.IsMobile
+			? GetMobileWorkingArea(screenPosition, screenSize)
+			: bounds;
 
 		_primaryScreen = new GodotScreen();
-		_primaryScreen.Initialize("Godot Primary", scaling, bounds, bounds, isPrimary: true);
+		_primaryScreen.Initialize("Godot Primary", scaling, bounds, workingArea, isPrimary: true);
 
 		_allScreens = [_primaryScreen];
+		_lastScreenWidth = screenSize.X;
+		_lastScreenHeight = screenSize.Y;
+	}
+
+	/// <summary>
+	/// Checks for screen dimension changes (e.g., orientation change on mobile)
+	/// and fires the <see cref="Changed"/> event if detected.
+	/// Should be called periodically (e.g., from _Process).
+	/// </summary>
+	public void CheckForChanges() {
+		var screenSize = DisplayServer.ScreenGetSize();
+		if (screenSize.X != _lastScreenWidth || screenSize.Y != _lastScreenHeight) {
+			_lastScreenWidth = screenSize.X;
+			_lastScreenHeight = screenSize.Y;
+
+			var screenPosition = DisplayServer.ScreenGetPosition();
+			var scaling = DisplayServer.ScreenGetScale();
+			var bounds = new PixelRect(screenPosition.X, screenPosition.Y, screenSize.X, screenSize.Y);
+			var workingArea = GodotPlatform.IsMobile
+				? GetMobileWorkingArea(screenPosition, screenSize)
+				: bounds;
+
+			_primaryScreen.Initialize("Godot Primary", scaling, bounds, workingArea, isPrimary: true);
+			Changed?.Invoke();
+		}
+	}
+
+	private static PixelRect GetMobileWorkingArea(Vector2I screenPosition, Vector2I screenSize) {
+		// On mobile, WorkingArea should exclude system bars (status bar, navigation bar).
+		// Godot doesn't expose safe area insets directly, but DisplayServer.ScreenGetUsableRect()
+		// may provide this information on some platforms. Fall back to full screen bounds.
+		// TODO: Use DisplayServer.ScreenGetUsableRect() when available in GodotSharp.
+		return new PixelRect(screenPosition.X, screenPosition.Y, screenSize.X, screenSize.Y);
 	}
 
 	public int ScreenCount => 1;

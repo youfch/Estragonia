@@ -33,11 +33,13 @@ public static class AppBuilderExtensions {
 	}
 
 	/// <summary>
-	/// Sets up the Godot platform with <see cref="IClassicDesktopStyleApplicationLifetime"/> support.
-	/// This enables <c>Application.Current.ApplicationLifetime</c> to return a valid desktop lifetime,
-	/// which is required for <c>Window.ShowDialog()</c> to find an owner window.
+	/// Sets up the Godot platform with the appropriate application lifetime for the current platform.
+	/// On desktop, uses <see cref="IClassicDesktopStyleApplicationLifetime" />; on mobile, uses
+	/// <see cref="ISingleViewApplicationLifetime" />.
 	/// </summary>
 	public static AppBuilder SetupWithGodot(this AppBuilder builder)
-		=> builder.SetupWithLifetime(GodotPlatform.CreateApplicationLifetime());
+		=> GodotPlatform.IsMobile
+			? builder.SetupWithLifetime(GodotPlatform.CreateMobileApplicationLifetime())
+			: builder.SetupWithLifetime(GodotPlatform.CreateApplicationLifetime());
 
 }

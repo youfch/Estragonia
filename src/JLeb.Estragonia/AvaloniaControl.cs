@@ -126,7 +126,7 @@ public class AvaloniaControl : GdControl {
 
 		var locator = AvaloniaLocator.Current;
 
-		if (locator.GetService<IPlatformGraphics>() is not GodotVkPlatformGraphics graphics) {
+		if (locator.GetService<IPlatformGraphics>() is not GodotPlatformGraphics graphics) {
 			GD.PrintErr("No Godot platform graphics found, did you forget to register your Avalonia app with UseGodot()?");
 			return;
 		}
@@ -200,16 +200,31 @@ public class AvaloniaControl : GdControl {
 
 		if (GdInput.IsActionPressed(GodotBuiltInActions.UIFocusNext) || GdInput.IsActionPressed(GodotBuiltInActions.UIFocusPrev))
 			navigationMethod = NavigationMethod.Tab;
-		else if (GdInput.GetMouseButtonMask() != 0)
+		else if (GdInput.GetMouseButtonMask() != 0 || GodotPlatform.IsMobile)
 			navigationMethod = NavigationMethod.Pointer;
 		else
 			navigationMethod = NavigationMethod.Unspecified;
 
 		inputElement.Focus(navigationMethod);
+
+		// On mobile, show the virtual keyboard when a text input element receives focus
+		if (GodotPlatform.IsMobile)
+			TryShowVirtualKeyboard(inputElement);
 	}
 
-	private void OnFocusExited()
-		=> _topLevel?.Impl.OnLostFocus();
+	private void OnFocusExited() {
+		_topLevel?.Impl.OnLostFocus();
+
+		// On mobile, hide the virtual keyboard when this control loses focus
+		if (GodotPlatform.IsMobile)
+			DisplayServer.VirtualKeyboardHide();
+	}
+
+	private static void TryShowVirtualKeyboard(IInputElement element) {
+		// Show the virtual keyboard for text input elements
+		if (element is Avalonia.Controls.TextBox or Avalonia.Controls.AutoCompleteBox)
+			DisplayServer.VirtualKeyboardShow(string.Empty);
+	}
 
 	public override void _Draw() {
 		if (_topLevel is null)

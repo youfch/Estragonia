@@ -22,7 +22,7 @@ namespace JLeb.Estragonia;
 /// <summary>Implementation of Avalonia <see cref="ITopLevelImpl"/> that renders to a Godot texture.</summary>
 internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 
-	private readonly GodotVkPlatformGraphics _platformGraphics;
+	private readonly GodotPlatformGraphics _platformGraphics;
 	private readonly IClipboard _clipboard;
 	private readonly TouchDevice _touchDevice = new();
 
@@ -79,7 +79,7 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 	AcrylicPlatformCompensationLevels ITopLevelImpl.AcrylicCompensationLevels
 		=> new(1.0, 1.0, 1.0);
 
-	public GodotTopLevelImpl(GodotVkPlatformGraphics platformGraphics, IClipboard clipboard, AvCompositor compositor) {
+	public GodotTopLevelImpl(GodotPlatformGraphics platformGraphics, IClipboard clipboard, AvCompositor compositor) {
 		_platformGraphics = platformGraphics;
 		_clipboard = clipboard;
 		Compositor = compositor;
