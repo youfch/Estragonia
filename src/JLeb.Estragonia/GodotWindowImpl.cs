@@ -238,13 +238,32 @@ namespace JLeb.Estragonia;
 	void ITopLevelImpl.SetInputRoot(IInputRoot inputRoot) => ((ITopLevelImpl)_topLevelImpl).SetInputRoot(inputRoot);
 
 	Point ITopLevelImpl.PointToClient(PixelPoint point) {
-		var local = new PixelPoint(point.X - Position.X, point.Y - Position.Y);
+		var pos = GetActualScreenPosition();
+		var local = new PixelPoint(point.X - pos.X, point.Y - pos.Y);
 		return ((ITopLevelImpl)_topLevelImpl).PointToClient(local);
 	}
 
 	PixelPoint ITopLevelImpl.PointToScreen(Point point) {
+		var pos = GetActualScreenPosition();
 		var local = ((ITopLevelImpl)_topLevelImpl).PointToScreen(point);
-		return new PixelPoint(local.X + Position.X, local.Y + Position.Y);
+		return new PixelPoint(local.X + pos.X, local.Y + pos.Y);
+	}
+
+	/// <summary>
+	/// Gets the window's actual screen position via DisplayServer.
+	/// Falls back to the cached <see cref="Position"/> if the window isn't in the tree.
+	/// </summary>
+	private PixelPoint GetActualScreenPosition() {
+		if (_isVisible && _gdWindow.IsInsideTree()) {
+			try {
+				var windowId = _gdWindow.GetWindowId();
+				var actualPos = DisplayServer.WindowGetPosition(windowId);
+				Position = new PixelPoint(actualPos.X, actualPos.Y);
+			} catch {
+				// Window not yet registered in DisplayServer
+			}
+		}
+		return Position;
 	}
 
 	void ITopLevelImpl.SetCursor(ICursorImpl? cursor) => ((ITopLevelImpl)_topLevelImpl).SetCursor(cursor);
