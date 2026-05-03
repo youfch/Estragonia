@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Platform;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Input.Raw;
+using Avalonia.LogicalTree;
 using Avalonia.Platform;
 using Avalonia.Platform.Surfaces;
 using Godot;
@@ -49,6 +52,7 @@ namespace JLeb.Estragonia;
 		// For SizeToContent windows, we need to re-center after the first layout pass
 		// determines the actual content size (which differs from the initial 400×300).
 		private bool _needsRecenter;
+		private bool _popupLayerEnabled;
 
 	public Action<Rect>? Paint { get; set; }
 	public Action<Size, WindowResizeReason>? Resized { get; set; }
@@ -76,7 +80,8 @@ namespace JLeb.Estragonia;
 	IPlatformRenderSurface[] ITopLevelImpl.Surfaces => ((ITopLevelImpl)_topLevelImpl).Surfaces;
 	public Size? FrameSize => null;
 	public PixelPoint Position { get; private set; }
-	public Size MaxAutoSizeHint => Size.Infinity;
+	// Finite constraint prevents Infinity propagation to PopupOverlayLayer.MeasureOverride.
+	public Size MaxAutoSizeHint { get; } = new Size(8192, 8192);
 
 	public WindowState WindowState {
 		get => _windowState;
@@ -236,16 +241,61 @@ namespace JLeb.Estragonia;
 	public void SetExtendClientAreaToDecorationsHint(bool extendIntoClientAreaHint) { }
 	public void SetExtendClientAreaTitleBarHeightHint(double titleBarHeight) { }
 	void ITopLevelImpl.SetInputRoot(IInputRoot inputRoot) => ((ITopLevelImpl)_topLevelImpl).SetInputRoot(inputRoot);
+
 	Point ITopLevelImpl.PointToClient(PixelPoint point) => ((ITopLevelImpl)_topLevelImpl).PointToClient(point);
 	PixelPoint ITopLevelImpl.PointToScreen(Point point) => ((ITopLevelImpl)_topLevelImpl).PointToScreen(point);
 	void ITopLevelImpl.SetCursor(ICursorImpl? cursor) => ((ITopLevelImpl)_topLevelImpl).SetCursor(cursor);
-	IPopupImpl? ITopLevelImpl.CreatePopup() => null;
+	IPopupImpl? ITopLevelImpl.CreatePopup() => null; // Use OverlayPopupHost
+
 	void ITopLevelImpl.SetTransparencyLevelHint(IReadOnlyList<WindowTransparencyLevel> transparencyLevels) => ((ITopLevelImpl)_topLevelImpl).SetTransparencyLevelHint(transparencyLevels);
 	void ITopLevelImpl.SetFrameThemeVariant(PlatformThemeVariant themeVariant) { }
 
 	object? IOptionalFeatureProvider.TryGetFeature(Type featureType) {
 		if (featureType == typeof(IScreenImpl)) return _screenImpl;
 		return ((ITopLevelImpl)_topLevelImpl).TryGetFeature(featureType);
+	}
+
+	/// <summary>
+	/// Enables PopupOverlayLayer on the VisualLayerManager so that popups
+	/// (ComboBox dropdowns, context menus, tooltips) render in-window.
+	/// Called from _Process after layout completes with a valid size.
+	/// </summary>
+	private void TryEnablePopupOverlayLayer() {
+		if (_popupLayerEnabled || _isDisposed) return;
+
+		// Find TopLevel via: PresentationSource → RootVisual(TopLevelHost) → LogicalParent → TopLevel
+		var inputRootField = typeof(GodotTopLevelImpl).GetField("_inputRoot",
+			BindingFlags.NonPublic | BindingFlags.Instance);
+		if (inputRootField?.GetValue(_topLevelImpl) is not IInputRoot inputRoot) return;
+		var rootVisual = inputRoot.GetType().GetProperty("RootVisual",
+			BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?
+			.GetValue(inputRoot) as InputElement;
+		var topLevel = (rootVisual as ILogical)?.LogicalParent as TopLevel;
+		if (topLevel is null) return;
+
+		// Walk visual tree to find the (possibly unnamed) VisualLayerManager.
+		var vlm = FindVisualChild<VisualLayerManager>(topLevel);
+		if (vlm is null) return;
+
+		vlm.EnableOverlayLayer = true;
+		vlm.EnableTextSelectorLayer = true;
+		typeof(VisualLayerManager).GetProperty("EnablePopupOverlayLayer",
+			BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?
+			.SetValue(vlm, true);
+
+		_popupLayerEnabled = true;
+	}
+
+	private static T? FindVisualChild<T>(Visual parent) where T : Visual {
+		var children = typeof(Visual).GetProperty("VisualChildren",
+			BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?
+			.GetValue(parent) as IEnumerable<Visual>;
+		if (children is null) return null;
+		foreach (var child in children) {
+			if (child is T typed) return typed;
+			if (FindVisualChild<T>(child) is { } result) return result;
+		}
+		return null;
 	}
 
 	private void OnCloseRequested() {
@@ -390,6 +440,9 @@ namespace JLeb.Estragonia;
 				// OnDraw renders with the old layout onto the new surface.
 				AvDispatcher.UIThread.RunJobs();
 			}
+
+			// Enable popup overlay after first layout pass (needs valid size).
+			_owner.TryEnablePopupOverlayLayer();
 
 			// For SizeToContent windows, re-center after Avalonia layout determines
 			// the actual content size (which differs from the initial 400×300 default).
