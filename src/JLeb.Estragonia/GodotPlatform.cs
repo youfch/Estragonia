@@ -1,13 +1,19 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Threading;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.Platform;
+using Avalonia.Controls.Primitives;
 using Avalonia.Dialogs;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
 using Avalonia.Platform;
 using Avalonia.Rendering;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Godot;
 using JLeb.Estragonia.Input;
 using AvCompositor = Avalonia.Rendering.Composition.Compositor;
@@ -21,6 +27,9 @@ internal static class GodotPlatform {
 	private static ManualRenderTimer? s_renderTimer;
 	private static ulong s_lastProcessFrame = UInt64.MaxValue;
 	private static GodotApplicationLifetime? s_lifetime;
+
+	/// <summary>Detects whether the current platform is mobile (Android/iOS).</summary>
+	public static bool IsMobile { get; } = OS.HasFeature("mobile");
 
 	/// <summary>
 	/// Set to <c>true</c> during <c>ManagedFileDialogOptions.ContentRootFactory</c> invocation
@@ -43,10 +52,16 @@ internal static class GodotPlatform {
 		return s_lifetime;
 	}
 
+	/// <summary>
+	/// Creates and initializes the <see cref="GodotMobileApplicationLifetime" /> for mobile platforms.
+	/// </summary>
+	public static GodotMobileApplicationLifetime CreateMobileApplicationLifetime()
+		=> new();
+
 	public static void Initialize() {
 		AvaloniaSynchronizationContext.AutoInstall = false; // Godot has its own sync context, don't replace it
 
-		var platformGraphics = new GodotVkPlatformGraphics();
+		var platformGraphics = new GodotPlatformGraphics();
 		var renderTimer = new ManualRenderTimer();
 
 		AvaloniaLocator.CurrentMutable
@@ -59,7 +74,9 @@ internal static class GodotPlatform {
 			.Bind<IPlatformSettings>().ToConstant(new GodotPlatformSettings())
 			.Bind<IRenderTimer>().ToConstant(renderTimer)
 			.Bind<IRenderLoop>().ToConstant(RenderLoop.FromTimer(renderTimer))
-			.Bind<IWindowingPlatform>().ToConstant(new GodotWindowingPlatform())
+			.Bind<IWindowingPlatform>().ToConstant(IsMobile
+			? (IWindowingPlatform)new GodotMobileWindowingPlatform()
+			: new GodotWindowingPlatform())
 			.Bind<ManagedFileDialogOptions>().ToConstant(new ManagedFileDialogOptions {
 				AllowDirectorySelection = true,
 				// Force managed file dialogs to use the Window path instead of the Popup path.
@@ -89,6 +106,40 @@ internal static class GodotPlatform {
 
 		s_renderTimer = renderTimer;
 		s_compositor = new AvCompositor(platformGraphics);
+
+		// Subscribe to TemplateAppliedEvent on TopLevel to fix PopupOverlayLayer support.
+		// Some theme templates (e.g. Ursa's StandardDialogWindow) include a VisualLayerManager
+		// without Name="PART_VisualLayerManager", which prevents TopLevel.OnApplyTemplate from
+		// discovering it. This means EnableVisualLayerManagerLayers() is a no-op and
+		// PopupOverlayLayer is never enabled, causing "Unable to create IPopupImpl and no
+		// overlay layer is found" when ComboBox or other popup controls try to open.
+		// We work around this by manually enabling PopupOverlayLayer on every VisualLayerManager
+		// in the TopLevel's visual tree right after its template is applied.
+		// IMPORTANT: We use TemplateAppliedEvent (not WindowOpenedEvent) because
+		// WindowOpenedEvent fires BEFORE ApplyTemplate(), so the visual tree isn't ready yet.
+		// Note: VisualLayerManager.EnablePopupOverlayLayer is internal in Avalonia.
+		// We use reflection to access it, with DynamicDependency to ensure AOT safety.
+		TemplatedControl.TemplateAppliedEvent.AddClassHandler(
+			typeof(TopLevel),
+			(sender, _) => EnablePopupLayerOnTopLevel((TopLevel)sender),
+			RoutingStrategies.Direct);
+	}
+
+	/// <summary>
+	/// Enables <c>PopupOverlayLayer</c> on all <see cref="VisualLayerManager"/> instances
+	/// in the given TopLevel's visual tree. Uses reflection because the property is internal.
+	/// <see cref="DynamicDependencyAttribute"/> ensures the AOT trimmer preserves it.
+	/// </summary>
+	[DynamicDependency(DynamicallyAccessedMemberTypes.NonPublicProperties, typeof(VisualLayerManager))]
+	private static void EnablePopupLayerOnTopLevel(TopLevel topLevel) {
+		var prop = typeof(VisualLayerManager).GetProperty("EnablePopupOverlayLayer",
+			BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+		if (prop == null) return;
+
+		foreach (var v in topLevel.GetSelfAndVisualDescendants()) {
+			if (v is VisualLayerManager vlm && !(bool)prop.GetValue(vlm)!)
+				prop.SetValue(vlm, true);
+		}
 	}
 
 	public static void TriggerRenderTick() {

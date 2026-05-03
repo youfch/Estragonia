@@ -1,11 +1,15 @@
-﻿using System;
+using System;
 using Avalonia;
 using Avalonia.Input.Platform;
 using Avalonia.Platform;
 
-namespace JLeb.Estragonia {
+namespace JLeb.Estragonia;
 
-internal sealed class GodotWindowingPlatform : IWindowingPlatform {
+/// <summary>
+/// Windowing platform for mobile Godot mode.
+/// Creates fullscreen-only windows without OS sub-window support.
+/// </summary>
+internal sealed class GodotMobileWindowingPlatform : IWindowingPlatform {
 
 	public IWindowImpl CreateWindow() {
 		var platformGraphics = AvaloniaLocator.Current.GetService<IPlatformGraphics>() as GodotPlatformGraphics;
@@ -14,14 +18,14 @@ internal sealed class GodotWindowingPlatform : IWindowingPlatform {
 		if (platformGraphics is null || clipboard is null)
 			throw new InvalidOperationException("GodotPlatform not initialized — call UseGodot().SetupWithoutStarting() first.");
 
-		return new GodotWindowImpl(platformGraphics, clipboard, GodotPlatform.Compositor);
+		return new GodotMobileWindowImpl(platformGraphics, clipboard, GodotPlatform.Compositor);
 	}
 
 	public IWindowImpl CreateEmbeddableWindow()
-		=> throw new NotImplementedException("Embeddable windows aren't implemented yet");
+		=> throw new NotImplementedException("Embeddable windows aren't supported on mobile");
 
 	public ITopLevelImpl CreateEmbeddableTopLevel()
-		=> throw new NotImplementedException("Embeddable top levels aren't implemented yet");
+		=> throw new NotImplementedException("Embeddable top levels aren't supported on mobile");
 
 	public ITrayIconImpl? CreateTrayIcon()
 		=> null;
@@ -29,7 +33,5 @@ internal sealed class GodotWindowingPlatform : IWindowingPlatform {
 	public void GetWindowsZOrder(ReadOnlySpan<IWindowImpl> windows, Span<long> zOrder) {
 		zOrder.Clear();
 	}
-
-}
 
 }
