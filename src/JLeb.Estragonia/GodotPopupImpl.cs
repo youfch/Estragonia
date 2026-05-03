@@ -110,6 +110,7 @@ internal sealed class GodotPopupImpl : IPopupImpl {
 			Visible = false,
 			Borderless = true,
 			Transparent = true,
+			TransparentBg = true,
 			InitialPosition = Godot.Window.WindowInitialPosition.Absolute,
 			WrapControls = false,
 			Size = new Vector2I(1, 1),
