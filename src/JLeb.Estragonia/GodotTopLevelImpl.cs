@@ -453,7 +453,7 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 	}
 
 	IPopupImpl? ITopLevelImpl.CreatePopup()
-		=> null;
+		=> new GodotPopupImpl(this);
 
 	void ITopLevelImpl.SetTransparencyLevelHint(IReadOnlyList<WindowTransparencyLevel> transparencyLevels) {
 		// Overlay windows are always composited onto the host control's texture,
