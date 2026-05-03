@@ -236,21 +236,10 @@ namespace JLeb.Estragonia;
 	public void SetExtendClientAreaToDecorationsHint(bool extendIntoClientAreaHint) { }
 	public void SetExtendClientAreaTitleBarHeightHint(double titleBarHeight) { }
 	void ITopLevelImpl.SetInputRoot(IInputRoot inputRoot) => ((ITopLevelImpl)_topLevelImpl).SetInputRoot(inputRoot);
-
-	Point ITopLevelImpl.PointToClient(PixelPoint point) {
-		// Convert screen coordinates to window-local coordinates
-		var local = new PixelPoint(point.X - Position.X, point.Y - Position.Y);
-		return ((ITopLevelImpl)_topLevelImpl).PointToClient(local);
-	}
-
-	PixelPoint ITopLevelImpl.PointToScreen(Point point) {
-		// Convert window-local coordinates to screen coordinates
-		var local = ((ITopLevelImpl)_topLevelImpl).PointToScreen(point);
-		return new PixelPoint(local.X + Position.X, local.Y + Position.Y);
-	}
-
+	Point ITopLevelImpl.PointToClient(PixelPoint point) => ((ITopLevelImpl)_topLevelImpl).PointToClient(point);
+	PixelPoint ITopLevelImpl.PointToScreen(Point point) => ((ITopLevelImpl)_topLevelImpl).PointToScreen(point);
 	void ITopLevelImpl.SetCursor(ICursorImpl? cursor) => ((ITopLevelImpl)_topLevelImpl).SetCursor(cursor);
-	IPopupImpl? ITopLevelImpl.CreatePopup() => new GodotPopupImpl(this);
+	IPopupImpl? ITopLevelImpl.CreatePopup() => null; // Force OverlayPopupHost path
 	void ITopLevelImpl.SetTransparencyLevelHint(IReadOnlyList<WindowTransparencyLevel> transparencyLevels) => ((ITopLevelImpl)_topLevelImpl).SetTransparencyLevelHint(transparencyLevels);
 	void ITopLevelImpl.SetFrameThemeVariant(PlatformThemeVariant themeVariant) { }
 

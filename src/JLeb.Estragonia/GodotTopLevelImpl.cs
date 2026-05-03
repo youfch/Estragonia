@@ -453,7 +453,7 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 	}
 
 	IPopupImpl? ITopLevelImpl.CreatePopup()
-		=> new GodotPopupImpl(this);
+		=> null; // Force OverlayPopupHost path — popups render within the same Avalonia context
 
 	void ITopLevelImpl.SetTransparencyLevelHint(IReadOnlyList<WindowTransparencyLevel> transparencyLevels) {
 		// Overlay windows are always composited onto the host control's texture,
