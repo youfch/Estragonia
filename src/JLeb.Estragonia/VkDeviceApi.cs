@@ -8,76 +8,76 @@ namespace JLeb.Estragonia;
 internal sealed unsafe class VkDeviceApi {
 
 	// Provided by VK_VERSION_1_0
-	private readonly delegate* unmanaged[Stdcall]<VkDevice, ref VkCommandPoolCreateInfo, IntPtr, out VkCommandPool, VkResult> _vkCreateCommandPool;
-	private readonly delegate* unmanaged[Stdcall]<VkDevice, VkCommandPool, IntPtr, void> _vkDestroyCommandPool;
-	private readonly delegate* unmanaged[Stdcall]<VkDevice, ref VkCommandBufferAllocateInfo, VkCommandBuffer*, VkResult> _vkAllocateCommandBuffers;
-	private readonly delegate* unmanaged[Stdcall]<VkCommandBuffer, ref VkCommandBufferBeginInfo, VkResult> _vkBeginCommandBuffer;
-	private readonly delegate* unmanaged[Stdcall]<VkCommandBuffer, VkResult> _vkEndCommandBuffer;
-	private readonly delegate* unmanaged[Stdcall]<VkDevice, VkCommandPool, uint, VkCommandBuffer*, void> _vkFreeCommandBuffers;
-	private readonly delegate* unmanaged[Stdcall]<VkCommandBuffer, VkPipelineStageFlags, VkPipelineStageFlags, VkDependencyFlags, uint, IntPtr, uint, IntPtr, uint, VkImageMemoryBarrier*, void> _vkCmdPipelineBarrier;
-	private readonly delegate* unmanaged[Stdcall]<VkQueue, uint, VkSubmitInfo*, VkFence, VkResult> _vkQueueSubmit;
-	private readonly delegate* unmanaged[Stdcall]<VkDevice, ref VkFenceCreateInfo, IntPtr, out VkFence, VkResult> _vkCreateFence;
-	private readonly delegate* unmanaged[Stdcall]<VkDevice, uint, VkFence*, VkResult> _vkResetFences;
-	private readonly delegate* unmanaged[Stdcall]<VkDevice, uint, VkFence*, uint, ulong, VkResult> _vkWaitForFences;
-	private readonly delegate* unmanaged[Stdcall]<VkDevice, VkFence, VkResult> _vkGetFenceStatus;
-	private readonly delegate* unmanaged[Stdcall]<VkDevice, VkFence, IntPtr, void> _vkDestroyFence;
-	private readonly delegate* unmanaged[Stdcall]<VkQueue, VkResult> _vkQueueWaitIdle;
+	private readonly delegate* unmanaged<VkDevice, ref VkCommandPoolCreateInfo, IntPtr, out VkCommandPool, VkResult> _vkCreateCommandPool;
+	private readonly delegate* unmanaged<VkDevice, VkCommandPool, IntPtr, void> _vkDestroyCommandPool;
+	private readonly delegate* unmanaged<VkDevice, ref VkCommandBufferAllocateInfo, VkCommandBuffer*, VkResult> _vkAllocateCommandBuffers;
+	private readonly delegate* unmanaged<VkCommandBuffer, ref VkCommandBufferBeginInfo, VkResult> _vkBeginCommandBuffer;
+	private readonly delegate* unmanaged<VkCommandBuffer, VkResult> _vkEndCommandBuffer;
+	private readonly delegate* unmanaged<VkDevice, VkCommandPool, uint, VkCommandBuffer*, void> _vkFreeCommandBuffers;
+	private readonly delegate* unmanaged<VkCommandBuffer, VkPipelineStageFlags, VkPipelineStageFlags, VkDependencyFlags, uint, IntPtr, uint, IntPtr, uint, VkImageMemoryBarrier*, void> _vkCmdPipelineBarrier;
+	private readonly delegate* unmanaged<VkQueue, uint, VkSubmitInfo*, VkFence, VkResult> _vkQueueSubmit;
+	private readonly delegate* unmanaged<VkDevice, ref VkFenceCreateInfo, IntPtr, out VkFence, VkResult> _vkCreateFence;
+	private readonly delegate* unmanaged<VkDevice, uint, VkFence*, VkResult> _vkResetFences;
+	private readonly delegate* unmanaged<VkDevice, uint, VkFence*, uint, ulong, VkResult> _vkWaitForFences;
+	private readonly delegate* unmanaged<VkDevice, VkFence, VkResult> _vkGetFenceStatus;
+	private readonly delegate* unmanaged<VkDevice, VkFence, IntPtr, void> _vkDestroyFence;
+	private readonly delegate* unmanaged<VkQueue, VkResult> _vkQueueWaitIdle;
 
-	public VkDeviceApi(VkDevice vkDevice, delegate* unmanaged[Stdcall]<VkDevice, byte*, IntPtr> vkGetDeviceProcAddr) {
+	public VkDeviceApi(VkDevice vkDevice, delegate* unmanaged<VkDevice, byte*, IntPtr> vkGetDeviceProcAddr) {
 		_vkCreateCommandPool =
-			(delegate* unmanaged[Stdcall]<VkDevice, ref VkCommandPoolCreateInfo, IntPtr, out VkCommandPool, VkResult>)
+			(delegate* unmanaged<VkDevice, ref VkCommandPoolCreateInfo, IntPtr, out VkCommandPool, VkResult>)
 			GetVkProcAddress("vkCreateCommandPool");
 
 		_vkDestroyCommandPool =
-			(delegate* unmanaged[Stdcall]<VkDevice, VkCommandPool, IntPtr, void>)
+			(delegate* unmanaged<VkDevice, VkCommandPool, IntPtr, void>)
 			GetVkProcAddress("vkDestroyCommandPool");
 
 		_vkAllocateCommandBuffers =
-			(delegate* unmanaged[Stdcall]<VkDevice, ref VkCommandBufferAllocateInfo, VkCommandBuffer*, VkResult>)
+			(delegate* unmanaged<VkDevice, ref VkCommandBufferAllocateInfo, VkCommandBuffer*, VkResult>)
 			GetVkProcAddress("vkAllocateCommandBuffers");
 
 		_vkBeginCommandBuffer =
-			(delegate* unmanaged[Stdcall]<VkCommandBuffer, ref VkCommandBufferBeginInfo, VkResult>)
+			(delegate* unmanaged<VkCommandBuffer, ref VkCommandBufferBeginInfo, VkResult>)
 			GetVkProcAddress("vkBeginCommandBuffer");
 
 		_vkEndCommandBuffer =
-			(delegate* unmanaged[Stdcall]<VkCommandBuffer, VkResult>)
+			(delegate* unmanaged<VkCommandBuffer, VkResult>)
 			GetVkProcAddress("vkEndCommandBuffer");
 
 		_vkFreeCommandBuffers =
-			(delegate* unmanaged[Stdcall]<VkDevice, VkCommandPool, uint, VkCommandBuffer*, void>)
+			(delegate* unmanaged<VkDevice, VkCommandPool, uint, VkCommandBuffer*, void>)
 			GetVkProcAddress("vkFreeCommandBuffers");
 
 		_vkCmdPipelineBarrier =
-			(delegate* unmanaged[Stdcall]<VkCommandBuffer, VkPipelineStageFlags, VkPipelineStageFlags, VkDependencyFlags, uint, IntPtr, uint, IntPtr, uint, VkImageMemoryBarrier*, void>)
+			(delegate* unmanaged<VkCommandBuffer, VkPipelineStageFlags, VkPipelineStageFlags, VkDependencyFlags, uint, IntPtr, uint, IntPtr, uint, VkImageMemoryBarrier*, void>)
 			GetVkProcAddress("vkCmdPipelineBarrier");
 
 		_vkQueueSubmit =
-			(delegate* unmanaged[Stdcall]<VkQueue, uint, VkSubmitInfo*, VkFence, VkResult>)
+			(delegate* unmanaged<VkQueue, uint, VkSubmitInfo*, VkFence, VkResult>)
 			GetVkProcAddress("vkQueueSubmit");
 
 		_vkCreateFence =
-			(delegate* unmanaged[Stdcall]<VkDevice, ref VkFenceCreateInfo, IntPtr, out VkFence, VkResult>)
+			(delegate* unmanaged<VkDevice, ref VkFenceCreateInfo, IntPtr, out VkFence, VkResult>)
 			GetVkProcAddress("vkCreateFence");
 
 		_vkResetFences =
-			(delegate* unmanaged[Stdcall]<VkDevice, uint, VkFence*, VkResult>)
+			(delegate* unmanaged<VkDevice, uint, VkFence*, VkResult>)
 			GetVkProcAddress("vkResetFences");
 
 		_vkWaitForFences =
-			(delegate* unmanaged[Stdcall]<VkDevice, uint, VkFence*, uint, ulong, VkResult>)
+			(delegate* unmanaged<VkDevice, uint, VkFence*, uint, ulong, VkResult>)
 			GetVkProcAddress("vkWaitForFences");
 
 		_vkGetFenceStatus =
-			(delegate* unmanaged[Stdcall]<VkDevice, VkFence, VkResult>)
+			(delegate* unmanaged<VkDevice, VkFence, VkResult>)
 			GetVkProcAddress("vkGetFenceStatus");
 
 		_vkDestroyFence =
-			(delegate* unmanaged[Stdcall]<VkDevice, VkFence, IntPtr, void>)
+			(delegate* unmanaged<VkDevice, VkFence, IntPtr, void>)
 			GetVkProcAddress("vkDestroyFence");
 
 		_vkQueueWaitIdle =
-			(delegate* unmanaged[Stdcall]<VkQueue, VkResult>)
+			(delegate* unmanaged<VkQueue, VkResult>)
 			GetVkProcAddress("vkQueueWaitIdle");
 
 		IntPtr GetVkProcAddress(string name) {

@@ -16,7 +16,7 @@ using Environment = System.Environment;
 namespace JLeb.Estragonia;
 
 /// <summary>Bridges the Godot Vulkan renderer with a Skia context used by Avalonia.</summary>
-internal sealed class GodotVkSkiaGpu : ISkiaGpu, IOptionalFeatureProvider {
+internal sealed class GodotVkSkiaGpu : IGpuBackend {
 
 	private readonly RenderingDevice _renderingDevice;
 	private readonly GRContext _grContext;
@@ -51,9 +51,9 @@ internal sealed class GodotVkSkiaGpu : ISkiaGpu, IOptionalFeatureProvider {
 			throw new DllNotFoundException("Couldn't find Vulkan loader library");
 
 		var vkGetInstanceProcAddr =
-			(delegate* unmanaged[Stdcall]<VkInstance, byte*, IntPtr>) NativeLibrary.GetExport(vkLibrary, "vkGetInstanceProcAddr");
+			(delegate* unmanaged<VkInstance, byte*, IntPtr>) NativeLibrary.GetExport(vkLibrary, "vkGetInstanceProcAddr");
 		var vkGetDeviceProcAddr =
-			(delegate* unmanaged[Stdcall]<VkDevice, byte*, IntPtr>) NativeLibrary.GetExport(vkLibrary, "vkGetDeviceProcAddr");
+			(delegate* unmanaged<VkDevice, byte*, IntPtr>) NativeLibrary.GetExport(vkLibrary, "vkGetDeviceProcAddr");
 
 		IntPtr GetVkProcAddress(string name, IntPtr instance, IntPtr device) {
 			Span<byte> utf8Name = stackalloc byte[128];
@@ -131,7 +131,7 @@ internal sealed class GodotVkSkiaGpu : ISkiaGpu, IOptionalFeatureProvider {
 
 	public ISkiaGpuRenderTarget? TryCreateRenderTarget(IEnumerable<IPlatformRenderSurface> surfaces)
 		=> surfaces.OfType<GodotSkiaSurface>().FirstOrDefault() is { } surface
-			? new GodotSkiaRenderTarget(surface, _grContext, _barrierHelper)
+			? new GodotSkiaRenderTarget(surface, _grContext)
 			: null;
 
 	public IScopedResource<GRContext>? TryGetGrContext()
@@ -198,17 +198,17 @@ internal sealed class GodotVkSkiaGpu : ISkiaGpu, IOptionalFeatureProvider {
 			TextureRdRid = gdRdTexture
 		};
 
+		var surfaceState = new VkSurfaceState(vkImage, VkImageLayout.UNDEFINED, _barrierHelper);
+
 		var surface = new GodotSkiaSurface(
 			skSurface,
 			gdTexture,
-			vkImage,
-			VkImageLayout.UNDEFINED,
 			_renderingDevice,
 			renderScaling,
-			_barrierHelper
+			surfaceState
 		);
 
-		surface.TransitionLayoutTo(VkImageLayout.COLOR_ATTACHMENT_OPTIMAL);
+		surfaceState.TransitionToRender();
 
 		return surface;
 	}
