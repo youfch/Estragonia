@@ -12,7 +12,6 @@ internal sealed class GodotSkiaRenderTarget : ISkiaGpuRenderTarget {
 	private readonly GodotSkiaSurface _surface;
 	private readonly GRContext _grContext;
 	private readonly double _renderScaling;
-	private readonly VkBarrierHelper _barrierHelper;
 
 	[SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator", Justification = "Doesn't affect correctness")]
 	private bool IsCorrupted
@@ -21,15 +20,14 @@ internal sealed class GodotSkiaRenderTarget : ISkiaGpuRenderTarget {
 	public PlatformRenderTargetState State
 		=> IsCorrupted ? PlatformRenderTargetState.Corrupted : PlatformRenderTargetState.Ready;
 
-	public GodotSkiaRenderTarget(GodotSkiaSurface surface, GRContext grContext, VkBarrierHelper barrierHelper) {
+	public GodotSkiaRenderTarget(GodotSkiaSurface surface, GRContext grContext) {
 		_renderScaling = surface.RenderScaling;
 		_surface = surface;
 		_grContext = grContext;
-		_barrierHelper = barrierHelper;
 	}
 
 	public ISkiaGpuRenderSession BeginRenderingSession(IRenderTarget.RenderTargetSceneInfo sceneInfo)
-		=> new GodotSkiaGpuRenderSession(_surface, _grContext, _barrierHelper);
+		=> new GodotSkiaGpuRenderSession(_surface, _grContext);
 
 	void IDisposable.Dispose() {
 	}

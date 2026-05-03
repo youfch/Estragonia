@@ -3,7 +3,6 @@ using Avalonia.Platform.Surfaces;
 using Avalonia.Skia;
 using Godot;
 using SkiaSharp;
-using static JLeb.Estragonia.VkInterop;
 
 namespace JLeb.Estragonia;
 
@@ -14,39 +13,15 @@ internal sealed class GodotSkiaSurface : ISkiaSurface, IPlatformRenderSurface {
 
 	public Texture2Drd GdTexture { get; }
 
-	public VkImage VkImage { get; }
+	public ISurfaceState SurfaceState { get; }
 
 	public RenderingDevice RenderingDevice { get; }
 
 	public double RenderScaling { get; set; }
 
-	public VkImageLayout LastLayout { get; set; }
-
-	public VkBarrierHelper BarrierHelper { get; }
-
 	public ulong DrawCount { get; set; }
 
 	public bool IsDisposed { get; private set; }
-
-	public void TransitionLayoutTo(VkImageLayout newLayout) {
-		if (LastLayout == newLayout)
-			return;
-
-		var sourceAccessMask = LastLayout switch {
-			VkImageLayout.COLOR_ATTACHMENT_OPTIMAL => VkAccessFlags.COLOR_ATTACHMENT_READ_BIT,
-			VkImageLayout.SHADER_READ_ONLY_OPTIMAL => VkAccessFlags.SHADER_READ_BIT,
-			_ => VkAccessFlags.MEMORY_READ_BIT | VkAccessFlags.MEMORY_WRITE_BIT
-		};
-
-		var destinationAccessMask = newLayout switch {
-			VkImageLayout.COLOR_ATTACHMENT_OPTIMAL => VkAccessFlags.COLOR_ATTACHMENT_WRITE_BIT,
-			VkImageLayout.SHADER_READ_ONLY_OPTIMAL => VkAccessFlags.SHADER_WRITE_BIT,
-			_ => VkAccessFlags.MEMORY_READ_BIT | VkAccessFlags.MEMORY_WRITE_BIT
-		};
-
-		BarrierHelper.TransitionImageLayout(VkImage, LastLayout, sourceAccessMask, newLayout, destinationAccessMask);
-		LastLayout = newLayout;
-	}
 
 	SKSurface ISkiaSurface.Surface
 		=> SkSurface;
@@ -57,19 +32,15 @@ internal sealed class GodotSkiaSurface : ISkiaSurface, IPlatformRenderSurface {
 	public GodotSkiaSurface(
 		SKSurface skSurface,
 		Texture2Drd gdTexture,
-		VkImage vkImage,
-		VkImageLayout lastLayout,
 		RenderingDevice renderingDevice,
 		double renderScaling,
-		VkBarrierHelper barrierHelper
+		ISurfaceState surfaceState
 	) {
 		SkSurface = skSurface;
 		GdTexture = gdTexture;
-		VkImage = vkImage;
-		LastLayout = lastLayout;
 		RenderingDevice = renderingDevice;
 		RenderScaling = renderScaling;
-		BarrierHelper = barrierHelper;
+		SurfaceState = surfaceState;
 		IsDisposed = false;
 	}
 
