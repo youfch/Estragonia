@@ -101,12 +101,8 @@ namespace JLeb.Estragonia;
 	public Thickness OffScreenMargin => default;
 	public PlatformAllowedWindowActions AllowedWindowActions => PlatformAllowedWindowActions.All;
 
-		private static int _dialogSeq; // per-instance sequence for log correlation
-
 	public GodotWindowImpl(GodotVkPlatformGraphics platformGraphics, IClipboard clipboard, AvCompositor compositor) {
 		_isManagedDialog = GodotPlatform.IsManagedDialogWindow;
-		if (_isManagedDialog)
-			GD.Print($"[Dialog#{Interlocked.Increment(ref _dialogSeq)}] new GodotWindowImpl");
 		_topLevelImpl = new GodotTopLevelImpl(platformGraphics, clipboard, compositor);
 		_screenImpl = new GodotScreenImpl();
 		_topLevelImpl.Paint = rect => Paint?.Invoke(rect);
@@ -142,9 +138,6 @@ namespace JLeb.Estragonia;
 	public void Show(bool activate, bool isDialog) {
 		if (_isDisposed || _isVisible) return;
 		var sceneTree = (SceneTree)Engine.GetMainLoop();
-
-		if (_isManagedDialog)
-			GD.Print($"[Dialog] Show: pendingSize={_pendingSize}, lastRender={_lastProcessRenderSize}");
 
 		sceneTree.Root.GuiEmbedSubwindows = false;
 
@@ -221,8 +214,6 @@ namespace JLeb.Estragonia;
 	public void Resize(Size clientSize, WindowResizeReason reason = WindowResizeReason.Application) {
 		var pixelSize = new Vector2I(Math.Max((int)clientSize.Width, 1), Math.Max((int)clientSize.Height, 1));
 		var pxSize = new PixelSize(pixelSize.X, pixelSize.Y);
-		if (_isManagedDialog)
-			GD.Print($"[Dialog] Resize: clientSize={clientSize}, reason={reason}, lastRender={_lastProcessRenderSize}, visible={_isVisible}");
 		_pendingSize = pixelSize;
 		if (_isVisible && _gdWindow.IsInsideTree())
 			_gdWindow.Size = pixelSize;
@@ -275,12 +266,8 @@ namespace JLeb.Estragonia;
 		//   Resize() → _gdWindow.Size = X → OnSizeChanged → SetRenderSize →
 		//   Resized → layout → Resize() → _gdWindow.Size = X → OnSizeChanged → ...
 		if (pixelSize != _lastProcessRenderSize) {
-			if (_isManagedDialog)
-				GD.Print($"[Dialog] OnSizeChanged EXTERNAL: gdSize={pixelSize}, lastRender={_lastProcessRenderSize} → SetRenderSize");
 			_lastProcessRenderSize = pixelSize;
 			_topLevelImpl.SetRenderSize(pixelSize, 1.0);
-		} else if (_isManagedDialog) {
-			GD.Print($"[Dialog] OnSizeChanged SKIP (matches lastRender): gdSize={pixelSize}");
 		}
 
 		// DisplayServer.WindowGetPosition fails if window isn't registered yet
@@ -396,8 +383,6 @@ namespace JLeb.Estragonia;
 			// SizeToContent where SetRenderSize → Resized → layout → Resize grows
 			// the window each frame.
 			if (pixelSize != _owner._lastProcessRenderSize) {
-				if (_owner._isManagedDialog)
-					GD.Print($"[Dialog] _Process SIZE DIFF: gdSize={pixelSize}, lastRender={_owner._lastProcessRenderSize} → SetRenderSize + RunJobs");
 				_owner._lastProcessRenderSize = pixelSize;
 				_owner._topLevelImpl.SetRenderSize(pixelSize, 1.0);
 				// Run queued layout jobs triggered by SetRenderSize before drawing.
