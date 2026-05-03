@@ -101,7 +101,7 @@ namespace JLeb.Estragonia;
 	public Thickness OffScreenMargin => default;
 	public PlatformAllowedWindowActions AllowedWindowActions => PlatformAllowedWindowActions.All;
 
-	public GodotWindowImpl(GodotVkPlatformGraphics platformGraphics, IClipboard clipboard, AvCompositor compositor) {
+	public GodotWindowImpl(GodotPlatformGraphics platformGraphics, IClipboard clipboard, AvCompositor compositor) {
 		_isManagedDialog = GodotPlatform.IsManagedDialogWindow;
 		_topLevelImpl = new GodotTopLevelImpl(platformGraphics, clipboard, compositor);
 		_screenImpl = new GodotScreenImpl();
@@ -193,6 +193,7 @@ namespace JLeb.Estragonia;
 
 	public void Hide() { _gdWindow.Visible = false; _isVisible = false; }
 	public void Activate() => _gdWindow.GrabFocus();
+
 	public void SetTopmost(bool value) { }
 	public void SetTitle(string? title) => _gdWindow.Title = title ?? string.Empty;
 	public void SetParent(IWindowImpl? parent) => _parentImpl = parent as GodotWindowImpl;
