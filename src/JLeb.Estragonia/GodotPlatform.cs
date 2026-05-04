@@ -26,6 +26,12 @@ internal static class GodotPlatform {
 	/// Set to <c>true</c> during <c>ManagedFileDialogOptions.ContentRootFactory</c> invocation
 	/// so that <see cref="GodotWindowImpl" /> can detect the resulting window is a managed
 	/// file dialog and configure modal behavior accordingly.
+	/// <para>
+	/// ⚠️ This flag relies on <see cref="ThreadStaticAttribute"/> and must only be read/written
+	/// on the same thread that set it. The <c>ContentRootFactory</c> delegate executes synchronously,
+	/// so the try/finally pattern below is safe. Do NOT introduce <c>await</c> between setting
+	/// and clearing this flag — the continuation may run on a different thread.
+	/// </para>
 	/// </summary>
 	[ThreadStatic]
 	internal static bool IsManagedDialogWindow;

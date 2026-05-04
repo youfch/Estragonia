@@ -59,7 +59,7 @@ internal sealed class BclStorageFolder : IStorageBookmarkFolder {
 			.AsAsyncEnumerable();
 
 	public Task<string?> SaveBookmarkAsync()
-		=> Task.FromResult<string?>(DirectoryInfo.FullName);
+		=> DirectoryInfo.Exists ? Task.FromResult<string?>(DirectoryInfo.FullName) : Task.FromResult<string?>(null);
 
 	public Task ReleaseBookmarkAsync()
 		=> Task.CompletedTask;
@@ -68,6 +68,14 @@ internal sealed class BclStorageFolder : IStorageBookmarkFolder {
 	}
 
 	public Task DeleteAsync() {
+		if (!DirectoryInfo.Exists)
+			throw new DirectoryNotFoundException($"Directory not found: {DirectoryInfo.FullName}");
+
+		// Guard against deleting root or system directories
+		var fullPath = System.IO.Path.GetFullPath(DirectoryInfo.FullName);
+		if (fullPath.Length <= 3) // "C:\" etc.
+			throw new UnauthorizedAccessException($"Refusing to delete root directory: {fullPath}");
+
 		DirectoryInfo.Delete(true);
 		return Task.CompletedTask;
 	}

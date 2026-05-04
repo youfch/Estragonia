@@ -33,6 +33,7 @@ namespace JLeb.Estragonia;
 		private readonly WindowHostControl _hostControl;
 		private readonly GodotScreenImpl _screenImpl;
 
+		private static bool s_guiEmbedSubwindowsSet;
 		private bool _isDisposed;
 		private WindowState _windowState = WindowState.Normal;
 		private bool _isVisible;
@@ -144,7 +145,12 @@ namespace JLeb.Estragonia;
 		if (_isDisposed || _isVisible) return;
 		var sceneTree = (SceneTree)Engine.GetMainLoop();
 
-		sceneTree.Root.GuiEmbedSubwindows = false;
+		// Only set GuiEmbedSubwindows once — this is a global property on the
+		// root viewport that affects all Godot sub-windows, not just ours.
+		if (!s_guiEmbedSubwindowsSet) {
+			sceneTree.Root.GuiEmbedSubwindows = false;
+			s_guiEmbedSubwindowsSet = true;
+		}
 
 		// Determine if this window should be modal (block input to parent).
 		// isDialog: set by Avalonia's ShowDialog().
@@ -260,16 +266,25 @@ namespace JLeb.Estragonia;
 	/// (ComboBox dropdowns, context menus, tooltips) render in-window.
 	/// Called from _Process after layout completes with a valid size.
 	/// </summary>
+	/// <remarks>
+	/// This method uses reflection to access Avalonia internal APIs
+	/// (RootVisual, VisualChildren, EnablePopupOverlayLayer) because no
+	/// public API exists for this purpose. These are protected by
+	/// AvaloniaAccessUnstablePrivateApis and may break on Avalonia version upgrades.
+	/// Reflection results are cached to minimize AOT trimming risk.
+	/// </remarks>
 	private void TryEnablePopupOverlayLayer() {
 		if (_popupLayerEnabled || _isDisposed) return;
 
-		// Find TopLevel via: PresentationSource → RootVisual(TopLevelHost) → LogicalParent → TopLevel
-		var inputRootField = typeof(GodotTopLevelImpl).GetField("_inputRoot",
-			BindingFlags.NonPublic | BindingFlags.Instance);
-		if (inputRootField?.GetValue(_topLevelImpl) is not IInputRoot inputRoot) return;
-		var rootVisual = inputRoot.GetType().GetProperty("RootVisual",
-			BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?
-			.GetValue(inputRoot) as InputElement;
+		// Use the internal property instead of reflection into our own class
+		var inputRoot = _topLevelImpl.InputRoot;
+		if (inputRoot is null) return;
+
+		// RootVisual is an Avalonia internal property on PresentationSource.
+		// Cached lazily from the inputRoot instance type (PresentationSource is internal).
+		var rootVisualProperty = CachedReflection.GetRootVisualProperty(inputRoot);
+		if (rootVisualProperty is null) return;
+		var rootVisual = rootVisualProperty.GetValue(inputRoot) as InputElement;
 		var topLevel = (rootVisual as ILogical)?.LogicalParent as TopLevel;
 		if (topLevel is null) return;
 
@@ -279,23 +294,68 @@ namespace JLeb.Estragonia;
 
 		vlm.EnableOverlayLayer = true;
 		vlm.EnableTextSelectorLayer = true;
-		typeof(VisualLayerManager).GetProperty("EnablePopupOverlayLayer",
-			BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?
-			.SetValue(vlm, true);
+
+		// EnablePopupOverlayLayer is an Avalonia internal property.
+		var popupOverlayProperty = CachedReflection.VisualLayerManager_EnablePopupOverlayLayer;
+		if (popupOverlayProperty is not null)
+			popupOverlayProperty.SetValue(vlm, true);
 
 		_popupLayerEnabled = true;
 	}
 
 	private static T? FindVisualChild<T>(Visual parent) where T : Visual {
-		var children = typeof(Visual).GetProperty("VisualChildren",
-			BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)?
-			.GetValue(parent) as IEnumerable<Visual>;
+		var childrenProperty = CachedReflection.Visual_VisualChildren;
+		if (childrenProperty is null) return null;
+		var children = childrenProperty.GetValue(parent) as IEnumerable<Visual>;
 		if (children is null) return null;
 		foreach (var child in children) {
 			if (child is T typed) return typed;
 			if (FindVisualChild<T>(child) is { } result) return result;
 		}
 		return null;
+	}
+
+	/// <summary>
+	/// Caches reflection lookups for Avalonia internal APIs to:
+	/// 1. Avoid repeated reflection overhead on every _Process tick
+	/// 2. Fail fast and deterministically if APIs are trimmed by AOT
+	/// 3. Centralize all Avalonia internal API access for easy maintenance
+	/// </summary>
+	private static class CachedReflection {
+		private static PropertyInfo? s_rootVisualProperty;
+		private static bool s_rootVisualResolved;
+		private static PropertyInfo? s_visualVisualChildren;
+		private static PropertyInfo? s_vlmEnablePopupOverlayLayer;
+		private static bool s_initialized;
+
+		public static PropertyInfo? Visual_VisualChildren => s_visualVisualChildren;
+		public static PropertyInfo? VisualLayerManager_EnablePopupOverlayLayer => s_vlmEnablePopupOverlayLayer;
+
+		/// <summary>
+		/// Lazily resolves and caches the RootVisual property from the
+		/// PresentationSource type (which is internal in Avalonia).
+		/// Returns null if the property is not found (e.g. trimmed by AOT).
+		/// </summary>
+		public static PropertyInfo? GetRootVisualProperty(IInputRoot inputRoot) {
+			if (s_rootVisualResolved)
+				return s_rootVisualProperty;
+
+			s_rootVisualResolved = true;
+			s_rootVisualProperty = inputRoot.GetType().GetProperty("RootVisual",
+				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+			return s_rootVisualProperty;
+		}
+
+		static CachedReflection() {
+			if (s_initialized) return;
+			s_initialized = true;
+
+			s_visualVisualChildren = typeof(Visual).GetProperty("VisualChildren",
+				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+			s_vlmEnablePopupOverlayLayer = typeof(VisualLayerManager).GetProperty("EnablePopupOverlayLayer",
+				BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+		}
 	}
 
 	private void OnCloseRequested() {

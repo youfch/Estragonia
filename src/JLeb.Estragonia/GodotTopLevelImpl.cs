@@ -372,14 +372,38 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 		var modifiers = InputModifiersProvider.GetRawInputModifiers();
 		var device = AvaloniaLocator.Current.GetRequiredService<IDragDropDevice>();
 
-		// Build IDataTransfer from the dropped file paths
+		// Build IDataTransfer from the dropped file paths.
+		// Validate each path exists on the filesystem before creating storage items
+		// to prevent processing invalid or potentially malicious paths.
 		var dataTransfer = new DataTransfer();
 		foreach (var filePath in files) {
-			IStorageItem storageItem = Directory.Exists(filePath)
-				? new BclStorageFolder(new DirectoryInfo(filePath))
-				: new BclStorageFile(new FileInfo(filePath));
-			dataTransfer.Add(DataTransferItem.CreateFile(storageItem));
+			if (String.IsNullOrWhiteSpace(filePath))
+				continue;
+
+			// Only accept absolute paths from OS drag-drop
+			if (!System.IO.Path.IsPathRooted(filePath))
+				continue;
+
+			try {
+				IStorageItem storageItem = Directory.Exists(filePath)
+					? new BclStorageFolder(new DirectoryInfo(filePath))
+					: File.Exists(filePath)
+						? new BclStorageFile(new FileInfo(filePath))
+						: null!; // Skip paths that no longer exist
+				if (storageItem is null)
+					continue;
+				dataTransfer.Add(DataTransferItem.CreateFile(storageItem));
+			} catch (ArgumentException) {
+				// Invalid path characters — skip
+			} catch (System.Security.SecurityException) {
+				// No access to path — skip
+			} catch (NotSupportedException) {
+				// Path format not supported — skip
+			}
 		}
+
+		if (dataTransfer.Items.Count == 0)
+			return false;
 
 		// Synthesize DragEnter → DragOver → Drop sequence
 		var enterArgs = new RawDragEvent(device, RawDragEventType.DragEnter, _inputRoot, point, dataTransfer, DragDropEffects.Copy | DragDropEffects.Link, modifiers);
@@ -396,6 +420,12 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 
 	void ITopLevelImpl.SetInputRoot(IInputRoot inputRoot)
 		=> _inputRoot = inputRoot;
+
+	/// <summary>
+	/// Exposes the current <see cref="IInputRoot"/> for use by <see cref="GodotWindowImpl"/>.
+	/// Avoids reflection into this class's private fields.
+	/// </summary>
+	internal IInputRoot? InputRoot => _inputRoot;
 
 	Point ITopLevelImpl.PointToClient(PixelPoint point)
 		=> point.ToPoint(RenderScaling);
