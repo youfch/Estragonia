@@ -139,46 +139,6 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 			Resized?.Invoke(ClientSize, hasScalingChanged ? WindowResizeReason.DpiChange : WindowResizeReason.Unspecified);
 	}
 
-	/// <summary>
-	/// Updates the render surface and ClientSize without firing <see cref="Resized"/>.
-	/// Used by <c>GodotWindowImpl.Resize()</c> to apply Avalonia-determined sizes
-	/// without creating a feedback loop (Resize → SetRenderSize → Resized → layout → Resize).
-	/// </summary>
-	[SuppressMessage("ReSharper", "CompareOfFloatsByEqualityOperator", Justification = "Doesn't affect correctness")]
-	internal void UpdateClientSize(PixelSize renderSize, double renderScaling) {
-		var hasScalingChanged = RenderScaling != renderScaling;
-		if (_renderSize == renderSize && !hasScalingChanged)
-			return;
-
-		var unclampedClientSize = renderSize.ToSize(renderScaling);
-
-		ClientSize = new Size(Math.Max(unclampedClientSize.Width, 0.0), Math.Max(unclampedClientSize.Height, 0.0));
-		RenderScaling = renderScaling;
-
-		if (_renderSize != renderSize) {
-			_renderSize = renderSize;
-
-			if (_surface is not null) {
-				_surface.Dispose();
-				_surface = null;
-			}
-
-			if (_isDisposed)
-				return;
-
-			_surface = CreateSurface();
-		}
-
-		if (hasScalingChanged) {
-			if (_surface != null)
-				_surface.RenderScaling = RenderScaling;
-			ScalingChanged?.Invoke(RenderScaling);
-		}
-
-		// Intentionally NOT firing Resized — the caller (Resize) is responding
-		// to an Avalonia layout pass, so no re-layout should be triggered.
-	}
-
 	public void OnDraw(Rect rect) {
 		if (_isDisposed)
 			return;
