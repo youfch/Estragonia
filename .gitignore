@@ -11,3 +11,4 @@ obj/
 *.uid
 tests/
 export_presets.cfg
+samples/PlatformDemo/
