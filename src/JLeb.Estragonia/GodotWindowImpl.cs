@@ -289,6 +289,8 @@ namespace JLeb.Estragonia;
 	/// public API exists for this purpose. These are protected by
 	/// AvaloniaAccessUnstablePrivateApis and may break on Avalonia version upgrades.
 	/// Reflection results are cached to minimize AOT trimming risk.
+	/// Throws <see cref="InvalidOperationException" /> if any required internal API
+	/// is not found (e.g. removed or renamed in a newer Avalonia version, or trimmed by AOT).
 	/// </remarks>
 	private void TryEnablePopupOverlayLayer() {
 		if (_popupLayerEnabled || _isDisposed) return;
@@ -300,29 +302,50 @@ namespace JLeb.Estragonia;
 		// RootVisual is an Avalonia internal property on PresentationSource.
 		// Cached lazily from the inputRoot instance type (PresentationSource is internal).
 		var rootVisualProperty = CachedReflection.GetRootVisualProperty(inputRoot);
-		if (rootVisualProperty is null) return;
+		if (rootVisualProperty is null)
+			throw new InvalidOperationException(
+				"Avalonia internal API 'RootVisual' not found. " +
+				"This likely means Avalonia has been upgraded to a version that removed or renamed this property. " +
+				"Estragonia needs to be updated to match the new Avalonia version.");
+
 		var rootVisual = rootVisualProperty.GetValue(inputRoot) as InputElement;
 		var topLevel = (rootVisual as ILogical)?.LogicalParent as TopLevel;
-		if (topLevel is null) return;
+		if (topLevel is null)
+			throw new InvalidOperationException(
+				"Failed to resolve TopLevel from PresentationSource.RootVisual. " +
+				"The Avalonia visual tree structure may have changed.");
 
 		// Walk visual tree to find the (possibly unnamed) VisualLayerManager.
 		var vlm = FindVisualChild<VisualLayerManager>(topLevel);
-		if (vlm is null) return;
+		if (vlm is null)
+			throw new InvalidOperationException(
+				"VisualLayerManager not found in the visual tree. " +
+				"The Avalonia internal layout structure may have changed.");
 
 		vlm.EnableOverlayLayer = true;
 		vlm.EnableTextSelectorLayer = true;
 
 		// EnablePopupOverlayLayer is an Avalonia internal property.
 		var popupOverlayProperty = CachedReflection.VisualLayerManager_EnablePopupOverlayLayer;
-		if (popupOverlayProperty is not null)
-			popupOverlayProperty.SetValue(vlm, true);
+		if (popupOverlayProperty is null)
+			throw new InvalidOperationException(
+				"Avalonia internal API 'VisualLayerManager.EnablePopupOverlayLayer' not found. " +
+				"This likely means Avalonia has been upgraded to a version that removed or renamed this property. " +
+				"Estragonia needs to be updated to match the new Avalonia version.");
+
+		popupOverlayProperty.SetValue(vlm, true);
 
 		_popupLayerEnabled = true;
 	}
 
 	private static T? FindVisualChild<T>(Visual parent) where T : Visual {
 		var childrenProperty = CachedReflection.Visual_VisualChildren;
-		if (childrenProperty is null) return null;
+		if (childrenProperty is null)
+			throw new InvalidOperationException(
+				"Avalonia internal API 'Visual.VisualChildren' not found. " +
+				"This likely means Avalonia has been upgraded to a version that removed or renamed this property. " +
+				"Estragonia needs to be updated to match the new Avalonia version.");
+
 		var children = childrenProperty.GetValue(parent) as IEnumerable<Visual>;
 		if (children is null) return null;
 		foreach (var child in children) {
