@@ -37,7 +37,7 @@ internal sealed class GodotTopLevelImpl : ITopLevelImpl {
 	public double RenderScaling { get; private set; } = 1.0;
 
 	double ITopLevelImpl.DesktopScaling
-		=> 1.0;
+		=> RenderScaling;
 
 	IPlatformHandle? ITopLevelImpl.Handle
 		=> null;

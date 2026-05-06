@@ -1,10 +1,19 @@
 {
-  "profiles": {
-    "配置文件 1": {
-      "commandName": "Executable",
-      "executablePath": "D:\\APP\\Godot_v4.6.1-stable_mono_win64\\Godot_v4.6.1-stable_mono_win64.exe",
-      "commandLineArgs": "--path.--verbose",
-      "workingDirectory": "."
-    }
-  }
+	"$schema": "http://json.schemastore.org/launchsettings.json",
+	"profiles": {
+		"Player": {
+			"commandName": "Executable",
+			"executablePath": "Godot",
+			"workingDirectory": "$(ProjectDir)",
+			"commandLineArgs": "--path $(ProjectDir)",
+			"nativeDebugging": true
+		},
+		"Editor": {
+			"commandName": "Executable",
+			"executablePath": "Godot",
+			"workingDirectory": "$(ProjectDir)",
+			"commandLineArgs": "--editor --path $(ProjectDir)",
+			"nativeDebugging": true
+		}
+	}
 }

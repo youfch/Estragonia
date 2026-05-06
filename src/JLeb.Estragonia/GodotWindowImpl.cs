@@ -71,11 +71,28 @@ namespace JLeb.Estragonia;
 	public Action<bool>? ExtendClientAreaToDecorationsChanged { get; set; }
 	public Action<PlatformAllowedWindowActions>? AllowedWindowActionsChanged { get; set; }
 
+/// <summary>
+	/// Gets the OS DPI scaling factor for the screen this window is on.
+	/// Uses the primary screen's scaling as fallback when the window isn't
+	/// yet inside the scene tree (e.g. during initial Show before AddChild).
+	/// </summary>
+	private double GetScreenScaling() {
+		try {
+			if (_gdWindow.IsInsideTree()) {
+				var screenIdx = DisplayServer.WindowGetCurrentScreen(_gdWindow.GetWindowId());
+				return DisplayServer.ScreenGetScale(screenIdx);
+			}
+		} catch {
+			// Window not fully initialized — fall through to primary screen
+		}
+		return DisplayServer.ScreenGetScale(DisplayServer.GetPrimaryScreen());
+	}
+
 	public Size ClientSize => _topLevelImpl.ClientSize;
 	public double RenderScaling => _topLevelImpl.RenderScaling;
 	public WindowTransparencyLevel TransparencyLevel => _topLevelImpl.TransparencyLevel;
 	public AvCompositor Compositor => _topLevelImpl.Compositor;
-	double ITopLevelImpl.DesktopScaling => 1.0;
+	double ITopLevelImpl.DesktopScaling => GetScreenScaling();
 	IPlatformHandle? ITopLevelImpl.Handle => null;
 	AcrylicPlatformCompensationLevels ITopLevelImpl.AcrylicCompensationLevels => new(1.0, 1.0, 1.0);
 	IPlatformRenderSurface[] ITopLevelImpl.Surfaces => ((ITopLevelImpl)_topLevelImpl).Surfaces;
@@ -118,7 +135,7 @@ namespace JLeb.Estragonia;
 		_topLevelImpl.ScalingChanged = scaling => ScalingChanged?.Invoke(scaling);
 		_topLevelImpl.TransparencyLevelChanged = level => TransparencyLevelChanged?.Invoke(level);
 
-		_topLevelImpl.SetRenderSize(new PixelSize(400, 300), 1.0);
+		_topLevelImpl.SetRenderSize(new PixelSize(400, 300), RenderScaling);
 
 		_gdWindow = new Godot.Window {
 			Title = string.Empty,
@@ -191,7 +208,7 @@ namespace JLeb.Estragonia;
 
 		var size = _gdWindow.Size;
 		_lastProcessRenderSize = new PixelSize(Math.Max((int)size.X, 1), Math.Max((int)size.Y, 1));
-		_topLevelImpl.SetRenderSize(_lastProcessRenderSize, 1.0);
+		_topLevelImpl.SetRenderSize(_lastProcessRenderSize, RenderScaling);
 		// For SizeToContent windows (e.g. managed file dialogs), the initial 400×300
 		// will be replaced by Avalonia's layout-determined size on the first _Process tick.
 		// Flag that we need to re-center after that happens.
@@ -230,7 +247,7 @@ namespace JLeb.Estragonia;
 			_gdWindow.Size = pixelSize;
 		// Record the size so _Process doesn't re-push it back to Avalonia.
 		_lastProcessRenderSize = pxSize;
-		_topLevelImpl.SetRenderSize(pxSize, 1.0);
+		_topLevelImpl.SetRenderSize(pxSize, RenderScaling);
 	}
 
 	public void Move(PixelPoint point) {
@@ -377,7 +394,7 @@ namespace JLeb.Estragonia;
 		//   Resized → layout → Resize() → _gdWindow.Size = X → OnSizeChanged → ...
 		if (pixelSize != _lastProcessRenderSize) {
 			_lastProcessRenderSize = pixelSize;
-			_topLevelImpl.SetRenderSize(pixelSize, 1.0);
+			_topLevelImpl.SetRenderSize(pixelSize, RenderScaling);
 		}
 
 		// DisplayServer.WindowGetPosition fails if window isn't registered yet
@@ -494,7 +511,7 @@ namespace JLeb.Estragonia;
 			// the window each frame.
 			if (pixelSize != _owner._lastProcessRenderSize) {
 				_owner._lastProcessRenderSize = pixelSize;
-				_owner._topLevelImpl.SetRenderSize(pixelSize, 1.0);
+				_owner._topLevelImpl.SetRenderSize(pixelSize, _owner.RenderScaling);
 				// Run queued layout jobs triggered by SetRenderSize before drawing.
 				// Without this, maximize/fullscreen shows a blurry texture because
 				// OnDraw renders with the old layout onto the new surface.
@@ -520,7 +537,7 @@ namespace JLeb.Estragonia;
 				window.CallDeferred(Godot.Window.MethodName.SetPosition, centerPos);
 			}
 
-			_owner._topLevelImpl.OnDraw(new Rect(pixelSize.ToSize(1.0)));
+			_owner._topLevelImpl.OnDraw(new Rect(pixelSize.ToSize(_owner.RenderScaling)));
 			QueueRedraw();
 		}
 

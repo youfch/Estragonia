@@ -10,3 +10,4 @@ obj/
 *.csproj.old
 *.uid
 tests/
+export_presets.cfg
